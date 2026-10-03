@@ -42,4 +42,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" main.js manifest.json styles.css --draft --verify-tag --title "$RELEASE_TAG" --generate-notes
+        run: |
+          gh release upload "$RELEASE_TAG" main.js manifest.json styles.css --clobber 2>/dev/null || gh release create "$RELEASE_TAG" main.js manifest.json styles.css --draft --verify-tag --title "$RELEASE_TAG" --generate-notes
