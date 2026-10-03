@@ -3,7 +3,7 @@ import process from 'node:process';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import builtins from 'builtin-modules';
+import { builtinModules } from 'node:module';
 import esbuildSvelte from 'esbuild-svelte';
 import svelteConfig from './svelte.config.mjs';
 
@@ -44,7 +44,7 @@ const options = {
 		'@codemirror/autocomplete', '@codemirror/collab', '@codemirror/commands',
 		'@codemirror/language', '@codemirror/lint', '@codemirror/search',
 		'@codemirror/state', '@codemirror/view',
-		'@lezer/common', '@lezer/highlight', '@lezer/lr', ...builtins,
+		'@lezer/common', '@lezer/highlight', '@lezer/lr', ...builtinModules,
 	],
 	format: 'cjs',
 	target: 'es2021',
