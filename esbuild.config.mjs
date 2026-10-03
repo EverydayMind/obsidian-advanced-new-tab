@@ -20,7 +20,12 @@ const writePluginAssets = {
 			await mkdir(outputDir, { recursive: true });
 			for (const file of result.outputFiles) {
 				const filename = basename(file.path) === 'main.css' ? 'styles.css' : basename(file.path);
-				await writeFile(resolve(outputDir, filename), file.contents);
+				// esbuild-svelte's virtual CSS namespace includes an absolute checkout path.
+				// Keep relative source labels so release CSS is identical in other checkouts.
+				const contents = filename === 'styles.css'
+					? file.text.replaceAll(`/* fakecss:${projectDir.replaceAll('\\', '/')}/`, '/* svelte:')
+					: file.contents;
+				await writeFile(resolve(outputDir, filename), contents);
 			}
 			if (!prod) {
 				await copyFile(resolve(projectDir, 'manifest.json'), resolve(outputDir, 'manifest.json'));
