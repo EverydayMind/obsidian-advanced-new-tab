@@ -13,7 +13,7 @@
     export let customIcon: string | undefined = undefined
     export let detail: string = ''
     const dispatch = createEventDispatcher<{ itemMenu: { file: TFile } }>()
-    const icons: Record<string, string> = { markdown: 'file-text', image: 'file-image', video: 'file-video', audio: 'file-audio', pdf: 'file-chart-pie' }
+    const icons: Record<string, string> = { markdown: 'file-text', image: 'file-image', video: 'file-video', audio: 'file-audio', pdf: 'file-chart-pie', canvas: 'layout-dashboard', base: 'database' }
     $: filename = file.basename
     $: icon = customIcon || icons[getFileTypeFromExtension(file.extension)] || 'file'
     function open(event: MouseEvent): void {

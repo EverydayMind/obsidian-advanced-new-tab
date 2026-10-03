@@ -41,6 +41,7 @@ Type a filter key and press Tab. Press Backspace with an empty input to clear th
 | audio | mp3, wav, m4a, ogg, 3gp, flac |
 | pdf | pdf |
 | canvas | canvas |
+| base | base |
 
 Use arrow keys to navigate, Enter to open, Ctrl/Cmd+Enter to open in a new tab, and Shift+Enter to create a note. No global hotkeys are assigned by default; bind commands in Obsidian settings if desired.
 

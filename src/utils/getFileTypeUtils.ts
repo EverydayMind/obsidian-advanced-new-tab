@@ -8,14 +8,14 @@ const fileTypeLookupTable: FileTypeLookupTable = {
     markdown : ['md'],
     pdf : ['pdf'],
     canvas: ['canvas'],
+    base: ['base'],
 }
 
 type FileTypeLookupTable = {[key in FileType]: string[]}
-export const fileTypes = ['image', 'video', 'audio', 'markdown', 'pdf', 'canvas'] as const
+export const fileTypes = ['image', 'video', 'audio', 'markdown', 'pdf', 'canvas', 'base'] as const
 export type FileType = typeof fileTypes[number]
-// export type FileType = 'image' | 'video' | 'audio' | 'markdown' | 'pdf'
 export const fileExtensions = ['jpg', 'jpeg', 'png', 'svg', 'gif', 'bmp', 'mp4', 'webm', 'ogv', 'mov', 'mkv', 
-                        'mp3', 'wav', 'm4a', 'ogg', '3gp', 'flac', 'md', 'pdf', 'canvas'] as const
+                        'mp3', 'wav', 'm4a', 'ogg', '3gp', 'flac', 'md', 'pdf', 'canvas', 'base'] as const
 export type FileExtension = typeof fileExtensions[number]
 // export type FileExtension = 'jpg' | 'jpeg' | 'png' | 'svg' | 'gif' | 'bmp' | 'mp4' | 'webm' | 'ogv' | 'mov' | 'mkv' | 
 //                             'mp3' | 'wav' | 'm4a' | 'ogg' | '3gp' | 'flac' | 'md' | 'pdf'
@@ -90,12 +90,9 @@ export function isMarkdown(file: TFile): boolean{
     return false
 }
 export function isValidExtension(extToCheck: string): boolean{
-    const extensions = ['jpg','jpeg','png','svg','gif','bmp','mp4','webm',
-    'ogv','mov','mkv','mp3','wav','m4a','ogg','3gp','flac','md','pdf']
-    return extensions.includes(extToCheck)
+    return (fileExtensions as readonly string[]).includes(extToCheck)
 }
 
 export function isValidFileType(typeToCheck: string): boolean{
-    const fileTypes = ['image','video','audio','markdown','pdf']
-    return fileTypes.includes(typeToCheck)
+    return (fileTypes as readonly string[]).includes(typeToCheck)
 }

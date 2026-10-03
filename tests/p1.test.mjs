@@ -105,6 +105,22 @@ test('template filter aliases list only templates, create on selection, and neve
     assert.equal(calls.length, 1);
 });
 
+test('base filter key maps exclusively to .base extension and filters search files', () => {
+    assert.ok(ui.filterKeys.includes('base'));
+    assert.ok(ui.fileTypes.includes('base'));
+    assert.ok(ui.fileExtensions.includes('base'));
+    assert.equal(ui.getFileTypeFromExtension('base'), 'base');
+    assert.equal(ui.isValidExtension('base'), true);
+    assert.equal(ui.isValidFileType('base'), true);
+
+    const baseFile = { basename: 'Projects', extension: 'base', fileType: 'base', isCreated: true };
+    const mdFile = { basename: 'Projects', extension: 'md', fileType: 'markdown', isCreated: true };
+    const canvasFile = { basename: 'Board', extension: 'canvas', fileType: 'canvas', isCreated: true };
+    const local = Object.create(ui.LocalSuggester.prototype);
+    const filtered = local.filterSearchFileArray('base', [baseFile, mdFile, canvasFile]);
+    assert.deepEqual(filtered, [baseFile]);
+});
+
 test('template folder mapping applies to numbered titles and defaults stay unchanged', async () => {
     const h = captureHost(); const opened = []; const template = file('Templates/Person.md', '{{title}}');
     h.files.set('People', Object.assign(new obsidianMock.TFolder(), { path: 'People' }));
