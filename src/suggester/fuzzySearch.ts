@@ -34,6 +34,7 @@ export interface SearchFile{
     extension: string
     fileType?: FileType
     url?: string
+    heading?: string
 }
 
 class fuzzySearch<T>{
@@ -135,4 +136,3 @@ export class SurfingItemFuzzySearch extends fuzzySearch<SurfingItem>{
         super(surfingItems, searchOptions)
     }
 }
-

@@ -1,4 +1,5 @@
 import { getBookmarksApi, type BookmarkItem } from './integrations'
+import { selectedBookmarks } from './utils/bookmarkUtils'
 import { t } from './i18n'
 import { Component, Notice, TAbstractFile, TFile, type App } from "obsidian";
 import { get, type Writable } from "svelte/store";
@@ -18,6 +19,7 @@ export class bookmarkedFilesManager extends Component{
     private app: App
     private plugin: HomeTab
     private bookmarkedFilesStore: Writable<bookmarkedFile[]>
+    private active = false
 
     constructor(app: App, plugin: HomeTab, bookmarkedFilesStore: Writable<bookmarkedFile[]>){
         super()
@@ -28,15 +30,20 @@ export class bookmarkedFilesManager extends Component{
     }
 
     onload(): void{
+        this.active = true
         // Load stored bookmarked files, then check if they've changed
         this.loadStoredBookmarkedFiles()
         this.updateBookmarkedFiles()
         // Update stored bookmarked files list when a file is bookmarked or unbookmarked
         const api = getBookmarksApi(this.app)
         if (api?.on) this.registerEvent(api.on('changed', () => this.updateBookmarkedFiles()))
+        this.registerEvent(this.app.vault.on('rename', () => this.updateBookmarkedFiles()))
+        this.registerEvent(this.app.vault.on('delete', () => this.updateBookmarkedFiles()))
     }
 
-    private updateBookmarkedFiles(): void{
+    onunload(): void { this.active = false }
+
+    public updateBookmarkedFiles(): void{
         const bookmarkedFiles = this.getBookmarkedFiles()
         
         this.bookmarkedFilesStore.update((filesArray) => {
@@ -46,7 +53,7 @@ export class bookmarkedFilesManager extends Component{
                 updatedArray.push({
                     file: bookmarkedFile,
                     // Retrieve icon from stored array
-                    iconId: filesArray.find((item) => item.file === bookmarkedFile)?.iconId ?? undefined
+                    iconId: filesArray.find((item) => item.file === bookmarkedFile)?.iconId ?? this.plugin.settings.bookmarkedFileStore?.find(item => item.filepath === bookmarkedFile.path)?.iconId
                 })
             })
             
@@ -80,7 +87,7 @@ export class bookmarkedFilesManager extends Component{
                     }
                 }
             }
-            bookmarkedItems.forEach(visit)
+            selectedBookmarks(bookmarkedItems, this.plugin.settings.bookmarkGroup).forEach(visit)
             return bookmarkedFiles
         }
         return []
@@ -93,7 +100,8 @@ export class bookmarkedFilesManager extends Component{
                 filepath: item.file.path, // Store only the path instead of the entire TFile instance
                 iconId: item.iconId
             }))
-            this.plugin.settings.bookmarkedFileStore = storeObj
+            const displayed = new Set(storeObj.map(item => item.filepath))
+            this.plugin.settings.bookmarkedFileStore = [...(this.plugin.settings.bookmarkedFileStore ?? []).filter(item => !displayed.has(item.filepath)), ...storeObj]
             await this.plugin.saveData(this.plugin.settings)
         }
     }
@@ -102,9 +110,10 @@ export class bookmarkedFilesManager extends Component{
         if(getBookmarksApi(this.app)){
             let filesToLoad: bookmarkedFile[] = []
             this.app.workspace.onLayoutReady(() => {
+                if (!this.active) return
                 this.plugin.settings.bookmarkedFileStore.forEach((item) => {
                     let file: TAbstractFile | null = this.app.vault.getAbstractFileByPath(item.filepath)
-                    if(file && file instanceof TFile){
+                    if(file && file instanceof TFile && this.getBookmarkedFiles().includes(file)){
                         filesToLoad.push({
                             file: file,
                             iconId: item.iconId
@@ -126,7 +135,7 @@ export class bookmarkedFilesManager extends Component{
                     if (child) return child
                 }
             }
-            const item = find(bookmarksPlugin.getBookmarks())
+            const item = find(selectedBookmarks(bookmarksPlugin.getBookmarks(), this.plugin.settings.bookmarkGroup))
             if(item) bookmarksPlugin.removeItem(item)
         }
         else{

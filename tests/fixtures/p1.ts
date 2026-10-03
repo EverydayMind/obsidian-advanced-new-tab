@@ -1,0 +1,6 @@
+export { RecentFileManager } from '../../src/recentFiles'
+export { recentFiles } from '../../src/store'
+export { default as LocalSuggester } from '../../src/suggester/homeTabSuggester'
+export { default as SearchBar, filterKeys } from '../../src/homeTabSearchbar'
+export { HomeTabView, EmbeddedHomeTab } from '../../src/homeView'
+export { default as HomeTab } from '../../src/main'

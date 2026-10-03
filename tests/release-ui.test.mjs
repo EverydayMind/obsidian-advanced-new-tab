@@ -102,3 +102,12 @@ test('section ordering tolerates duplicates, missing and unknown sections', () =
     assert.deepEqual(moveItem(['a', 'b', 'c'], 0, 2), ['b', 'c', 'a']);
     assert.deepEqual(moveItem(['a', 'b'], -1, 0), ['a', 'b']);
 });
+
+test('declarative template target controls persist nested fields independently', async () => {
+    const tab = new HomeTabSettingTab(); let saved = 0;
+    tab.plugin = { settings: structuredClone(DEFAULT_SETTINGS), async saveSettings() { saved++; } };
+    tab.plugin.settings.templateTargets.push({ template: 'Templates/Person.md', folder: '' });
+    await tab.setControlValue('templateTargets.0.folder', 'People');
+    assert.equal(tab.getControlValue('templateTargets.0.folder'), 'People'); assert.equal(saved, 1);
+    assert.deepEqual(DEFAULT_SETTINGS.templateTargets, []);
+});

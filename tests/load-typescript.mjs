@@ -4,7 +4,10 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
 export const obsidianMock = {
-	Component: class {},
+	Component: class { registerEvent() {} },
+	Plugin: class {},
+	FileView: class { constructor(leaf) { this.app = leaf.app; } },
+	MarkdownRenderChild: class {},
 	PluginSettingTab: class {},
 	AbstractInputSuggest: class {},
 	getIconIds: () => ['file', 'search'],
@@ -26,6 +29,7 @@ export async function loadTypeScript(entry, { stubSvelte = false } = {}) {
 		format: 'cjs', external: ['obsidian', 'moment', ...(stubSvelte ? ['svelte'] : [])], logLevel: 'silent',
 		plugins: stubSvelte ? [{ name: 'test-svelte-host', setup(builder) {
 			builder.onLoad({ filter: /\.svelte$/ }, () => ({ contents: 'export default class { $destroy() {} }', loader: 'js' }));
+			builder.onLoad({ filter: /\.css$/ }, () => ({ contents: '', loader: 'js' }));
 		} }] : [],
 	});
 	const module = { exports: {} };

@@ -8,6 +8,7 @@ export class Component {}
 export class Notice {}
 export class Setting {}
 export class TFile {}
+export class TFolder {}
 export const normalizePath = path => path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
 export const getLinkpath = path => path.split('#')[0];
 export const getIcon = () => undefined;

@@ -14,6 +14,12 @@
     let inputValue = ''
 
     function handleKeydown(e: KeyboardEvent): void{
+        if (e.key === 'Enter' && e.altKey && HomeTabSearchBar.captureEnabled) {
+            e.preventDefault()
+            e.stopImmediatePropagation()
+            void HomeTabSearchBar.captureInput()
+            return
+        }
         // If the input field is empty and a filter is active remove it
         if(e.key === 'Backspace'){
             if(inputValue != '') return

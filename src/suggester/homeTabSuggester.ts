@@ -20,6 +20,7 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
     private searchBar: HomeTabSearchBar
 
     private activeFilter: FileType | FileExtension  | null
+    private templateMode = false
 
     constructor(app: App, plugin: HomeTab, searchBar: HomeTabSearchBar) {
         super(app, get(searchBar.searchBarEl), get(searchBar.suggestionContainerEl), {
@@ -80,7 +81,9 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
     }
 
     private refreshIndex(): void {
-        this.files = getSearchFiles(this.app, this.plugin.settings.unresolvedLinks)
+        this.files = this.templateMode
+            ? (this.plugin.templateManager?.getTemplateFiles() ?? []).map(file => ({ name: file.name, basename: file.basename, path: file.path, file, isCreated: true, extension: 'md', fileType: 'markdown' }))
+            : getSearchFiles(this.app, this.plugin.settings.unresolvedLinks, this.plugin.settings.searchHeadings)
         let indexed = this.plugin.settings.markdownOnly ? this.filterSearchFileArray('markdown', this.files) : this.files
         if (this.activeFilter) indexed = this.filterSearchFileArray(this.activeFilter, this.files)
         const options = { ...DEFAULT_FUSE_OPTIONS, ignoreLocation: true, fieldNormWeight: 1.65, keys: [{name: 'basename', weight: 1.5}, {name: 'aliases', weight: 0.1}] }
@@ -89,6 +92,7 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
     }
 
     onNoSuggestion(): void {
+        if (this.templateMode) { this.close(); return }
         if(!this.activeFilter || this.activeFilter === 'markdown' || this.activeFilter === 'md'){
             const input = this.inputEl.value
             if (input) {
@@ -116,8 +120,11 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
     }
 
     getSuggestions(input: string): Fuse.FuseResult<SearchFile>[] {
-        const results = this.fuzzySearch?.rawSearch(input, this.plugin.settings.maxResults) ?? []
-        const url = !this.activeFilter ? parseWebUrl(input) : null
+        if (this.templateMode) this.refreshIndex()
+        const results: Fuse.FuseResult<SearchFile>[] = this.templateMode && !input.trim()
+            ? this.files.slice(0, this.plugin.settings.maxResults).map((item, refIndex) => ({ item, refIndex, score: 0 }))
+            : this.fuzzySearch?.rawSearch(input, this.plugin.settings.maxResults) ?? []
+        const url = parseWebUrl(input)
         if (url) results.unshift({ item: { name: url, basename: url, path: url,
             url, isCreated: true, extension: '', fileType: 'markdown' }, refIndex: -1, score: 0 })
         return results.slice(0, this.plugin.settings.maxResults)
@@ -131,7 +138,10 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
             return
         }
         if(selectedItem.item.isCreated && selectedItem.item.file){
-            this.openFile(selectedItem.item.file, newTab)
+            if (this.templateMode) {
+                this.close()
+                void this.plugin.templateManager?.createNoteFromTemplate(selectedItem.item.file, newTab)
+            } else this.searchBar.openFile(selectedItem.item.file, newTab, selectedItem.item.heading)
         }
         else{
             void this.handleFileCreation(selectedItem.item, newTab)
@@ -139,7 +149,7 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
     }
 
     getDisplayElementProps(suggestion: Fuse.FuseResult<SearchFile>): {nameToDisplay: string, filePath?: string}{
-        const nameToDisplay = suggestion.item.url ? t('action.openLink', { url: suggestion.item.url }) : this.fuzzySearch.getBestMatch(suggestion, this.inputEl.value)
+        const nameToDisplay = suggestion.item.url ? t('action.openLink', { url: suggestion.item.url }) : suggestion.item.heading ? `${suggestion.item.heading} — ${suggestion.item.file.basename}` : this.fuzzySearch.getBestMatch(suggestion, this.inputEl.value)
         let filePath: string | undefined = undefined
         if(this.plugin.settings.showPath && !suggestion.item.url){
             filePath = suggestion.item.file ? suggestion.item.file.parent.name : getParentFolderFromPath(suggestion.item.path) // Parent folder
@@ -156,6 +166,7 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
     }
 
     async handleFileCreation(selectedFile?: SearchFile, newTab?: boolean): Promise<void>{
+        if (this.templateMode) return
         let newFile: TFile
 
         if(selectedFile?.isUnresolved){
@@ -193,6 +204,13 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
         this.refreshIndex()
 
         this.suggester.setSuggestions([]) // Reset search suggestions
+        this.close()
+    }
+
+    setTemplateFilter(): void {
+        this.templateMode = true
+        this.plugin.templateManager?.refreshTemplates()
+        this.refreshIndex()
         this.close()
     }
 }

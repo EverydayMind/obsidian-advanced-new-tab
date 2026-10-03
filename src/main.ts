@@ -1,4 +1,4 @@
-import { Notice, Plugin, WorkspaceLeaf, normalizePath } from 'obsidian';
+import { Notice, Plugin, WorkspaceLeaf, TFolder } from 'obsidian';
 import { EmbeddedHomeTab, HomeTabView, VIEW_TYPE, CODE_BLOCK_TYPE } from 'src/homeView';
 import { HomeTabSettingTab, DEFAULT_SETTINGS, type HomeTabSettings } from './settings'
 import { pluginSettingsStore, bookmarkedFiles, templateFiles, templateStatus } from './store'
@@ -7,25 +7,32 @@ import { bookmarkedFilesManager } from './bookmarkedFiles';
 import { TemplateManager } from './templates';
 import './styles.css';
 import { mergeSettings } from './utils/settingsUtils';
-import { sanitizeNoteName } from './utils/templateUtils';
 import { initI18n, t } from './i18n';
-import { getCorePlugin, getCommunityPlugin, executeAppCommand, isRecord } from './integrations'
+import { getCorePlugin, getCommunityPlugin, executeAppCommand, isRecord, revealVaultFolder } from './integrations'
 import type { QuickAction } from './settingsData'
 import { openInWebViewer } from './webViewer'
 import { executeCoreAction, type CoreActionId } from './coreActions'
+import { HOVER_SOURCE } from './hoverPreview'
+import { DailyCapture } from './dailyCapture'
 
 export default class HomeTab extends Plugin {
 	settings: HomeTabSettings;
 	recentFileManager: RecentFileManager
-	bookmarkedFileManager: bookmarkedFilesManager
+	bookmarkedFileManager?: bookmarkedFilesManager
 	templateManager: TemplateManager
+	settingTab: HomeTabSettingTab
 	private embeddedCleanups = new Set<() => void>()
 	private ribbonEl: HTMLElement
+	private dailyCapture: DailyCapture
+	private layoutReady = false
 	
 	async onload() {
 		await this.loadSettings();
 		initI18n(this.settings.language)
-		this.addSettingTab(new HomeTabSettingTab(this.app, this))
+		this.dailyCapture = new DailyCapture(this.app, this)
+		this.registerHoverLinkSource(HOVER_SOURCE, { display: this.manifest.name, defaultMod: true })
+		this.settingTab = new HomeTabSettingTab(this.app, this)
+		this.addSettingTab(this.settingTab)
 		this.registerView(VIEW_TYPE, (leaf) => new HomeTabView(leaf, this));		
 		this.ribbonEl = this.addRibbonIcon('search', t('command.open'), () => this.activateView(false, true))
 		this.ribbonEl.toggle(this.settings.showRibbonIcon)
@@ -66,15 +73,13 @@ export default class HomeTab extends Plugin {
 
 		// Wait for all plugins to load before check if the bookmarked plugin is enabled
 		this.app.workspace.onLayoutReady(() => {
+            this.layoutReady = true
             if (!getCommunityPlugin(this.app, 'home-tab') && !getCommunityPlugin(this.app, 'harbor-tab')) {
                 for (const leaf of this.app.workspace.getLeavesOfType('home-tab-view')) {
                     void leaf.setViewState({ ...leaf.getViewState(), type: VIEW_TYPE })
                 }
             }
-            const bookmarksPlugin = getCorePlugin(this.app, 'bookmarks')
-			if(bookmarksPlugin && bookmarksPlugin.enabled !== false){
-				this.bookmarkedFileManager = this.addChild(new bookmarkedFilesManager(this.app, this, bookmarkedFiles))
-			}
+            this.syncBookmarkManager()
 
             this.registerMarkdownCodeBlockProcessor(CODE_BLOCK_TYPE, (source, el, ctx) => {
                 const embedded = new EmbeddedHomeTab(el, this, source, ctx.sourcePath)
@@ -112,6 +117,7 @@ export default class HomeTab extends Plugin {
 	}
 
 	onunload(): void {
+		this.layoutReady = false
 		for (const cleanup of this.embeddedCleanups) cleanup()
         this.embeddedCleanups.clear()
 	}
@@ -146,10 +152,24 @@ export default class HomeTab extends Plugin {
 	}
 
 	private onLayoutChange(): void{
+        if (this.layoutReady) this.syncBookmarkManager()
 		if(this.settings.replaceNewTabs){
 			this.activateView()
 		}
 	}
+
+    private syncBookmarkManager(): void {
+        const enabled = !!getCorePlugin(this.app, 'bookmarks')
+        if (enabled && !this.bookmarkedFileManager) {
+            this.bookmarkedFileManager = this.addChild(new bookmarkedFilesManager(this.app, this, bookmarkedFiles))
+            this.refreshOpenViews()
+        } else if (!enabled && this.bookmarkedFileManager) {
+            this.removeChild(this.bookmarkedFileManager)
+            this.bookmarkedFileManager = undefined
+            bookmarkedFiles.set([])
+            this.refreshOpenViews()
+        }
+    }
 
 	public activateView(overrideView?: boolean, openNewTab?: boolean):void {
 		const leaf = openNewTab ? this.app.workspace.getLeaf('tab') : this.app.workspace.getMostRecentLeaf()
@@ -181,13 +201,42 @@ export default class HomeTab extends Plugin {
 	}
 
     async runQuickAction(action: QuickAction): Promise<void> {
+        try { await this.executeQuickAction(action) }
+        catch (error) { console.error('[advanced-new-tab] Quick action failed', error); new Notice(t('notice.actionUnavailable')) }
+    }
+
+    private async executeQuickAction(action: QuickAction): Promise<void> {
         if (action.kind === 'command') {
             if (!executeAppCommand(this.app, action.target)) new Notice(t('notice.actionUnavailable'))
             return
         }
+        if (action.kind === 'url') { await this.openWebUrl(action.target, action.newTab); return }
+        if (action.kind === 'folder') {
+            const folder = action.target === '/' ? this.app.vault.getRoot() : this.app.vault.getAbstractFileByPath(action.target)
+            if (!(folder instanceof TFolder) || !await revealVaultFolder(this.app, folder)) new Notice(t('notice.actionUnavailable'))
+            return
+        }
         const file = this.app.vault.getFileByPath(action.target)
         if (!file) { new Notice(t('notice.actionUnavailable')); return }
+        if (action.kind === 'template') {
+            if (file.extension !== 'md') { new Notice(t('notice.actionUnavailable')); return }
+            await this.templateManager.createNoteFromTemplate(file, action.newTab)
+            return
+        }
         await this.app.workspace.getLeaf(action.newTab ? 'tab' : false).openFile(file)
+    }
+
+    async captureToDailyNote(input: string): Promise<boolean> {
+        if (!input.trim() || !this.settings.captureEnabled) return false
+        try {
+            await this.dailyCapture.capture(input)
+            new Notice(t('notice.captured'))
+            return true
+        } catch (error) {
+            console.error('[advanced-new-tab] Daily capture failed', error)
+            new Notice(t('notice.captureFailed'))
+            return false
+        }
     }
 
     runCoreAction(id: CoreActionId, event?: Event): void {
@@ -209,22 +258,4 @@ export default class HomeTab extends Plugin {
             new Notice(t('notice.webViewerFailed'))
         }
     }
-
-	public async createNewNote(): Promise<void> {
-		try {
-			const folder = this.app.fileManager.getNewFileParent('').path
-			const name = sanitizeNoteName('Untitled')
-			let counter = 0
-			let path: string
-			do {
-				path = normalizePath(`${folder}/${name}${counter ? ` ${counter}` : ''}.md`)
-				counter += 1
-			} while (this.app.vault.getAbstractFileByPath(path))
-			const file = await this.app.vault.create(path, '')
-			await this.app.workspace.getLeaf(false).openFile(file)
-		} catch (error) {
-			console.error('[advanced-new-tab] Unable to create a new note', error)
-			new Notice(t('notice.newNoteFailed'))
-		}
-	}
 }

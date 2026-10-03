@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { Menu, type App, type TFile } from "obsidian";
     import { i18n } from '../i18n';
+    import { onMount } from 'svelte';
+    import { getLanguage } from 'obsidian';
+    import { resolveLocale } from '../i18n/translator';
+    import { relativeTime } from '../utils/recentUtils';
 	import type { RecentFileManager, recentFile } from "src/recentFiles";
 	import type { HomeTabSettings } from "src/settings";
 	import FileDisplayItem from "./svelteComponents/fileDisplayItem.svelte";
@@ -11,6 +15,15 @@
     export let recentFileManager: RecentFileManager
 
     let selectedFile: TFile
+    let now = Date.now()
+    onMount(() => {
+        const timer = setInterval(() => { now = Date.now() }, 60000)
+        return () => clearInterval(timer)
+    })
+    function detail(item: recentFile, currentTime: number, language: string): string {
+        return [pluginSettings.recentShowFolder ? item.file.parent?.path || '/' : '',
+            pluginSettings.recentShowTime ? relativeTime(item.timestamp, resolveLocale(language === 'auto' ? getLanguage() : language), currentTime) : ''].filter(Boolean).join(' · ')
+    }
 
     $: contextualMenu = new Menu()
             .addItem((item) => item
@@ -22,10 +35,12 @@
 <div class="advanced-new-tab-recent-files-container">
     <div class="advanced-new-tab-recent-files-title">
         {$i18n('section.recent')}
+        <button type="button" on:click={() => recentFileManager.clear()}>{$i18n('recent.clear')}</button>
     </div>
     <div class="advanced-new-tab-recent-files-wrapper">
         {#each recentFileList as recentFile (recentFile.file.path)}
             <FileDisplayItem file={recentFile.file} {app} {pluginSettings} {contextualMenu}
+            detail={detail(recentFile, now, pluginSettings.language)}
             on:itemMenu={(e) => selectedFile = e.detail.file}/>
         {/each}
     </div>

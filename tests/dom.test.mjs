@@ -43,7 +43,7 @@ test('Svelte mounts real input bindings and reacts to translated settings and qu
     const settings = structuredClone(ui.DEFAULT_SETTINGS);
     settings.logoType = 'lucideIcon'; settings.logo.lucideIcon = 'search';
     settings.quickActions = [{ kind: 'command', label: 'Capture', target: 'capture', icon: 'file', newTab: false }];
-    const plugin = { settings, app: { vault: { adapter: {} } }, createNewNote() {}, runQuickAction(action) { calls.push(action.target); } };
+    const plugin = { settings, app: { vault: { adapter: {} } }, runCoreAction() {}, runQuickAction(action) { calls.push(action.target); } };
     const searchBar = { searchBarEl: ui.writable(), activeExtEl: ui.writable(), suggestionContainerEl: ui.writable(), updateActiveSuggester() {} };
     ui.pluginSettingsStore.set(settings); ui.initI18n('ko');
     const component = ui.flushSync(() => ui.mount(ui.Homepage, { target, props: { plugin, HomeTabSearchBar: searchBar } }));
@@ -96,7 +96,7 @@ test('native new-tab buttons follow every core-plugin combination and forward cl
         commands: { executeCommandById(id, event) { calls.push({ id, event }); return true; } },
         workspace: { on(name, callback) { assert.equal(name, 'layout-change'); listeners.add(callback); return callback; }, offref(callback) { listeners.delete(callback); } },
     };
-    const plugin = { settings, app, createNewNote() {}, runCoreAction: (id, event) => ui.executeCoreAction(app, id, event) };
+    const plugin = { settings, app, runCoreAction: (id, event) => ui.executeCoreAction(app, id, event) };
     const searchBar = { searchBarEl: ui.writable(), activeExtEl: ui.writable(), suggestionContainerEl: ui.writable(), updateActiveSuggester() {} };
     ui.pluginSettingsStore.set(settings); ui.initI18n('ko');
     const component = ui.flushSync(() => ui.mount(ui.Homepage, { target, props: { plugin, HomeTabSearchBar: searchBar } }));
@@ -106,12 +106,20 @@ test('native new-tab buttons follow every core-plugin combination and forward cl
         for (const callback of listeners) callback(); ui.flushSync();
         const buttons = [...target.querySelectorAll('.advanced-new-tab-action-button')];
         assert.deepEqual(buttons.map(button => button.textContent.trim()), ['새 노트', ...labels.filter((_, index) => mask & (1 << index))]);
-        for (let index = 0; index < ids.length; index++) {
-            if (!enabled.has(ids[index])) continue;
-            const event = new MouseEvent('click', { bubbles: true, ctrlKey: true });
-            buttons.find(button => button.textContent.trim() === labels[index]).dispatchEvent(event);
-            assert.equal(calls.at(-1).id, commands[index]);
-            assert.equal(calls.at(-1).event, event);
+        assert.equal(buttons[0].querySelector('svg').getAttribute('data-icon'), 'lucide-square-pen');
+        const available = [
+            { label: '새 노트', command: 'file-explorer:new-file' },
+            ...ids.flatMap((id, index) => enabled.has(id) ? [{ label: labels[index], command: commands[index] }] : []),
+        ];
+        for (const action of available) {
+            for (const modifiers of [{}, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
+                const previousCount = calls.length;
+                const event = new MouseEvent('click', { bubbles: true, ...modifiers });
+                buttons.find(button => button.textContent.trim() === action.label).dispatchEvent(event);
+                assert.equal(calls.length, previousCount + 1);
+                assert.equal(calls.at(-1).id, action.command);
+                assert.equal(calls.at(-1).event, event);
+            }
         }
     }
     const staleButton = [...target.querySelectorAll('button')].find(button => button.textContent.trim() === '웹 뷰어 열기');
@@ -144,4 +152,18 @@ test('nested bookmarks resolve files once and remove the matching nested bookmar
     manager.updateFileIcon(new ui.TFile(), 'search');
     assert.equal(ui.get(store)[0].iconId, 'file');
     manager.removeBookmark(file); assert.deepEqual(removed, [nested]);
+});
+
+test('Alt+Enter capture is opt-in and does not trigger a search selection', async () => {
+    const target = document.createElement('div'); document.body.appendChild(target); const calls = [];
+    const settings = structuredClone(ui.DEFAULT_SETTINGS); const plugin = { settings, app: { vault: { adapter: {} } } };
+    const searchBar = { searchBarEl: ui.writable(), activeExtEl: ui.writable(), suggestionContainerEl: ui.writable(), captureEnabled: false, captureInput: async () => calls.push('capture') };
+    ui.pluginSettingsStore.set(settings);
+    const component = ui.flushSync(() => ui.mount(ui.Homepage, { target, props: { plugin, HomeTabSearchBar: searchBar } }));
+    const input = target.querySelector('input');
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', altKey: true, bubbles: true, cancelable: true })); assert.deepEqual(calls, []);
+    searchBar.captureEnabled = true;
+    const event = new window.KeyboardEvent('keydown', { key: 'Enter', altKey: true, bubbles: true, cancelable: true }); input.dispatchEvent(event);
+    assert.deepEqual(calls, ['capture']); assert.equal(event.defaultPrevented, true);
+    await ui.unmount(component); target.remove();
 });

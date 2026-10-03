@@ -64,10 +64,6 @@
     function handleOpenTodayDailyNote(): void {
         void plugin.openTodayDailyNote()
     }
-
-    function handleCreateNewNote(): void {
-        void plugin.createNewNote()
-    }
 </script>
   
 <main class="advanced-new-tab" class:embedded={embeddedView}>
@@ -188,11 +184,8 @@
                     {$i18n('action.dailyNote')}
                 </button>
             {/if}
-            <button class="advanced-new-tab-action-button" on:click={handleCreateNewNote}>
-                {$i18n('action.newNote')}
-            </button>
-            {#each coreActions as action (action.pluginId)}
-                <button class="advanced-new-tab-action-button" on:click={event => plugin.runCoreAction(action.pluginId, event)}>
+            {#each coreActions as action (action.id)}
+                <button class="advanced-new-tab-action-button" on:click={event => plugin.runCoreAction(action.id, event)}>
                     <Icon name={action.icon} size={16}/>
                     {$i18n(action.label)}
                 </button>
@@ -207,7 +200,7 @@
     {/if}
 
     {#each sections as section}
-        {#if section === 'bookmarks' && isbookmarkedPluginEnabled && renderbookmarkedFiles}
+        {#if section === 'bookmarks' && isbookmarkedPluginEnabled && plugin.bookmarkedFileManager && renderbookmarkedFiles}
             <BookmarkedFiles bookmarkedFiles={bookmarkedFileList} app={plugin.app} {pluginSettings} bookmarkedFileManager={plugin.bookmarkedFileManager}/>
         {:else if section === 'recent' && plugin.recentFileManager && recentFileList.length > 0 && renderRecentFiles}
             <RecentFiles {recentFileList} app={plugin.app} {pluginSettings} recentFileManager={plugin.recentFileManager}/>

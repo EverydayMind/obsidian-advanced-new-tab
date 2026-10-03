@@ -21,14 +21,15 @@ export class EmbeddedHomeTab extends MarkdownRenderChild{
         this.plugin = plugin
 
         this.parseCodeBlockContent(codeBlockContent)
-        this.searchBar = new HomeTabSearchBar(plugin, (file, newTab) => {
+        this.searchBar = new HomeTabSearchBar(plugin, (file, newTab, heading) => {
             let target: WorkspaceLeaf | undefined
             plugin.app.workspace.iterateAllLeaves(leaf => {
                 if (leaf.view.containerEl.contains(containerEl)) target = leaf
             })
-            if (newTab) void plugin.app.workspace.getLeaf('tab').openFile(file)
-            else if (target) void target.openFile(file)
-            else void plugin.app.workspace.openLinkText(file.path, sourcePath, false)
+            const state = heading ? { eState: { subpath: `#${heading}` } } : undefined
+            if (newTab) void plugin.app.workspace.getLeaf('tab').openFile(file, state)
+            else if (target) void target.openFile(file, state)
+            else void plugin.app.workspace.openLinkText(`${file.path}${heading ? `#${heading}` : ''}`, sourcePath, false)
         }, sourcePath, (url, newTab) => {
             let target: WorkspaceLeaf | undefined
             plugin.app.workspace.iterateAllLeaves(leaf => {
@@ -97,7 +98,7 @@ export class HomeTabView extends FileView{
         this.icon = 'search'
 
         this.searchBar = new HomeTabSearchBar(this.plugin,
-            (file, newTab) => { void (newTab ? this.app.workspace.getLeaf('tab') : this.leaf).openFile(file) }, '',
+            (file, newTab, heading) => { void (newTab ? this.app.workspace.getLeaf('tab') : this.leaf).openFile(file, heading ? { eState: { subpath: `#${heading}` } } : undefined) }, '',
             (url, newTab) => { void plugin.openWebUrl(url, newTab, this.leaf) })
     }
 

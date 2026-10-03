@@ -1,5 +1,6 @@
-import { getCommunityPlugin } from './integrations'
-import { PluginSettingTab, getIconIds, type SettingControl, type SettingDefinition, type SettingDefinitionItem } from 'obsidian'
+import { getCommunityPlugin, getBookmarksApi } from './integrations'
+import { bookmarkGroups } from './utils/bookmarkUtils'
+import { PluginSettingTab, getIconIds, TFolder, type SettingControl, type SettingDefinition, type SettingDefinitionItem } from 'obsidian'
 import type HomeTab from './main'
 import { DEFAULT_SETTINGS } from './settingsData'
 import { t, type MessageKey } from './i18n'
@@ -13,12 +14,16 @@ import { listAppCommands } from './integrations'
 export { DEFAULT_SETTINGS, type HomeTabSettings } from './settingsData'
 
 const structuralKeys = new Set(['language', 'newTabOnStart', 'omnisearch', 'showRecentFiles', 'logoType', 'iconColorType', 'customFont', 'fontColorType'])
-const searchKeys = new Set(['omnisearch', 'markdownOnly', 'unresolvedLinks', 'maxResults', 'searchDelay', 'showShortcuts', 'selectionHighlight', 'showPath', 'showOmnisearchExcerpt'])
+const searchKeys = new Set(['omnisearch', 'markdownOnly', 'unresolvedLinks', 'searchHeadings', 'templateFolderOverride', 'maxResults', 'searchDelay', 'showShortcuts', 'selectionHighlight', 'showPath', 'showOmnisearchExcerpt'])
 
 export class HomeTabSettingTab extends PluginSettingTab {
     declare plugin: HomeTab
 
     getControlValue(key: string): unknown {
+        if (key.startsWith('templateTargets.')) {
+            const [, index, field] = key.split('.')
+            return this.plugin.settings.templateTargets[Number(index)]?.[field as 'template' | 'folder']
+        }
         if (key.startsWith('quickActions.')) {
             const [, index, field] = key.split('.')
             return this.plugin.settings.quickActions[Number(index)]?.[field]
@@ -29,7 +34,13 @@ export class HomeTabSettingTab extends PluginSettingTab {
 
     async setControlValue(key: string, value: unknown): Promise<void> {
         // Nested controls must never replace or mutate DEFAULT_SETTINGS.logo.
-        if (key.startsWith('quickActions.')) {
+        if (key.startsWith('templateTargets.')) {
+            const [, index, field] = key.split('.')
+            const target = this.plugin.settings.templateTargets[Number(index)]
+            if (!target || typeof value !== 'string') return
+            target[field as 'template' | 'folder'] = value
+        }
+        else if (key.startsWith('quickActions.')) {
             const [, index, field] = key.split('.')
             const action = this.plugin.settings.quickActions[Number(index)]
             if (!action) return
@@ -38,7 +49,8 @@ export class HomeTabSettingTab extends PluginSettingTab {
         }
         else if (key.startsWith('logo.')) this.plugin.settings.logo[key.slice(5)] = value
         else this.plugin.settings[key] = value
-        if (key === 'maxRecentFiles') this.plugin.recentFileManager?.onNewMaxListLenght(value as number)
+        if (['maxRecentFiles', 'recentFileMode', 'recentExcludedFolders', 'storeRecentFile'].includes(key)) this.plugin.recentFileManager?.refresh()
+        if (key === 'bookmarkGroup') this.plugin.bookmarkedFileManager?.updateBookmarkedFiles()
         await this.plugin.saveSettings()
         if (key === 'templateFolderOverride' || key === 'language') this.plugin.templateManager?.refreshTemplates()
         if (searchKeys.has(key)) this.plugin.refreshOpenViews()
@@ -67,12 +79,17 @@ export class HomeTabSettingTab extends PluginSettingTab {
             group('search', [
                 toggle('omnisearch', () => !!getCommunityPlugin(this.app, 'omnisearch')),
                 toggle('markdownOnly', () => !s.omnisearch), toggle('unresolvedLinks', () => !s.omnisearch),
+                toggle('searchHeadings', () => !s.omnisearch),
                 toggle('showPath'), toggle('showShortcuts'), slider('maxResults', 1, 25, 1), slider('searchDelay', 0, 500, 10),
                 toggle('showOmnisearchExcerpt', () => !!getCommunityPlugin(this.app, 'omnisearch')),
             ]),
             group('sections', [
                 toggle('showbookmarkedFiles'), toggle('showRecentFiles'), toggle('showTemplates'), toggle('showQuickActions'), toggle('showGuide'),
                 toggle('storeRecentFile', () => s.showRecentFiles), slider('maxRecentFiles', 1, 25, 1, () => s.showRecentFiles),
+                control('recentFileMode', 'dropdown', { options: options(['opened', 'modified']) }, () => s.showRecentFiles),
+                toggle('recentShowTime', () => s.showRecentFiles), toggle('recentShowFolder', () => s.showRecentFiles),
+                control('recentExcludedFolders', 'textarea', {}, () => s.showRecentFiles), toggle('hoverPreview'),
+                control('bookmarkGroup', 'dropdown', { options: { '': t('bookmarks.allGroups'), ...Object.fromEntries(bookmarkGroups(getBookmarksApi(this.app)?.getBookmarks() ?? []).map(item => [item.value, item.label])) } }),
             ]),
             {
                 type: 'list', heading: t('settings.sectionOrder'),
@@ -90,11 +107,15 @@ export class HomeTabSettingTab extends PluginSettingTab {
                 items: s.quickActions.map((action, index) => ({
                     type: 'page', name: action.label || t('actions.number', { number: index + 1 }),
                     items: [
-                        { name: t('actions.kind'), control: { type: 'dropdown', key: `quickActions.${index}.kind`, options: { command: t('actions.command'), file: t('actions.file') } } },
+                        { name: t('actions.kind'), control: { type: 'dropdown', key: `quickActions.${index}.kind`, options: Object.fromEntries(['command', 'file', 'folder', 'url', 'template'].map(kind => [kind, t(`actions.${kind}` as MessageKey)])) } },
                         { name: t('actions.label'), control: { type: 'text', key: `quickActions.${index}.label` } },
                         { name: t('actions.icon'), control: { type: 'text', key: `quickActions.${index}.icon`, validate: value => !value || getIconIds().includes(value) ? undefined : t('validation.icon') } },
-                        action.kind === 'file'
-                            ? { name: t('actions.target'), control: { type: 'file', key: `quickActions.${index}.target`, validate: value => !value || this.app.vault.getFileByPath(value) ? undefined : t('validation.file') } }
+                        action.kind === 'file' || action.kind === 'template'
+                            ? { name: t('actions.target'), control: { type: 'file', key: `quickActions.${index}.target`, filter: file => action.kind !== 'template' || file.extension === 'md', validate: value => !value || this.app.vault.getFileByPath(value) ? undefined : t('validation.file') } }
+                            : action.kind === 'folder'
+                            ? { name: t('actions.target'), control: { type: 'folder', key: `quickActions.${index}.target`, validate: value => !value || value === '/' || this.app.vault.getAbstractFileByPath(value) instanceof TFolder ? undefined : t('validation.folder') } }
+                            : action.kind === 'url'
+                            ? { name: t('actions.target'), control: { type: 'text', key: `quickActions.${index}.target`, validate: value => !value || parseWebUrl(value) ? undefined : t('validation.url') } }
                             : { name: t('actions.target'), desc: t('actions.commandHint'), render: setting => {
                                 let suggester: CommandSuggester
                                 setting.addSearch(text => {
@@ -106,13 +127,29 @@ export class HomeTabSettingTab extends PluginSettingTab {
                                 })
                                 return () => suggester?.close()
                             } },
-                        { name: t('actions.newTab'), visible: () => action.kind === 'file', control: { type: 'toggle', key: `quickActions.${index}.newTab` } },
+                        { name: t('actions.newTab'), visible: () => ['file', 'url', 'template'].includes(action.kind), control: { type: 'toggle', key: `quickActions.${index}.newTab` } },
                     ],
                 })),
             },
             group('templates', [
                 control('templateFolderOverride', 'folder'), control('newNoteNameFormat', 'text'), control('templateWordsToStrip', 'text'),
             ]),
+            {
+                type: 'list', heading: t('templates.targets'), emptyState: t('templates.targetsEmpty'),
+                onDelete: index => { s.templateTargets.splice(index, 1); void this.plugin.saveSettings().then(() => this.update()) },
+                addItem: { name: t('templates.addTarget'), action: () => {
+                    s.templateTargets.push({ template: '', folder: '' })
+                    void this.plugin.saveSettings().then(() => this.update())
+                } },
+                items: s.templateTargets.map((target, index) => ({
+                    type: 'page', name: target.template || t('templates.targetNumber', { number: index + 1 }),
+                    items: [
+                        { name: t('actions.template'), control: { type: 'file', key: `templateTargets.${index}.template`, filter: file => file.extension === 'md', validate: value => s.templateTargets.some((item, i) => i !== index && item.template === value) ? t('validation.duplicateTemplate') : undefined } },
+                        { name: t('templates.targetFolder'), desc: t('templates.targetFolderHint'), control: { type: 'folder', key: `templateTargets.${index}.folder`, validate: value => !value || value === '/' || this.app.vault.getAbstractFileByPath(value) instanceof TFolder ? undefined : t('validation.folder') } },
+                    ],
+                })),
+            },
+            group('capture', [toggle('captureEnabled'), control('captureHeading', 'text')]),
             group('appearance', [
                 control('logoType', 'dropdown', { options: { default: t('option.defaultLogo'), ...options(['oldLogo', 'imagePath', 'imageLink', 'lucideIcon', 'none']) } }),
                 control('logo.imagePath', 'file', {

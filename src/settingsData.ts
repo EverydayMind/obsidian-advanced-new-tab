@@ -11,7 +11,7 @@ interface ObjectKeys {
 }
 
 export interface QuickAction extends ObjectKeys {
-    kind: 'command' | 'file'
+    kind: 'command' | 'file' | 'folder' | 'url' | 'template'
     label: string
     target: string
     icon: string
@@ -66,6 +66,16 @@ export interface HomeTabSettings extends ObjectKeys{
     showRibbonIcon: boolean
     quickActions: QuickAction[]
     sectionOrder: string
+    searchHeadings: boolean
+    templateTargets: { template: string; folder: string }[]
+    recentFileMode: 'opened' | 'modified'
+    recentShowTime: boolean
+    recentShowFolder: boolean
+    recentExcludedFolders: string
+    hoverPreview: boolean
+    bookmarkGroup: string
+    captureEnabled: boolean
+    captureHeading: string
 }
 
 export const DEFAULT_SETTINGS: HomeTabSettings = {
@@ -110,4 +120,14 @@ export const DEFAULT_SETTINGS: HomeTabSettings = {
     showRibbonIcon: true,
     quickActions: [],
     sectionOrder: 'bookmarks,recent,templates',
+    searchHeadings: false,
+    templateTargets: [],
+    recentFileMode: 'opened',
+    recentShowTime: false,
+    recentShowFolder: false,
+    recentExcludedFolders: '',
+    hoverPreview: true,
+    bookmarkGroup: '',
+    captureEnabled: false,
+    captureHeading: '',
 }

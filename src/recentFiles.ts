@@ -1,127 +1,89 @@
-import { Component, type App, TFile, TAbstractFile } from "obsidian";
-import { get } from "svelte/store";
-import type HomeTab from "./main";
-import type { HomeTabSettings } from "./settings";
-import { recentFiles } from "./store";
+import { Component, type App, TFile } from 'obsidian'
+import type HomeTab from './main'
+import { recentFiles } from './store'
+import { excludedRecentPath } from './utils/recentUtils'
 
-export interface recentFile{
-    file: TFile,
-    timestamp: number,
-}
+export interface recentFile { file: TFile; timestamp: number }
+export interface recentFileStore { filepath: string; timestamp: number }
 
-export interface recentFileStore{
-    filepath: string,
-    timestamp: number,
-}
+export class RecentFileManager extends Component {
+    private openedHistory: recentFile[] = []
+    private hiddenModified = new Set<string>()
+    private saveTimer?: number
+    private active = false
 
-export class RecentFileManager extends Component{
-    private app: App
-    private plugin: HomeTab
-    private pluginSettings: HomeTabSettings
+    constructor(private app: App, private plugin: HomeTab) { super() }
 
-    constructor(app: App, plugin: HomeTab){
-        super()
-        this.app = app
-        this.plugin = plugin
-        this.pluginSettings = plugin.settings
-    }
-    
     onload(): void {
-        this.registerEvent(this.app.workspace.on('file-open', async (file) => {this.updateRecentFiles(file); await this.storeRecentFiles()})) // Save file to recent files list on opening
-        this.registerEvent(this.app.vault.on('delete', async (file) => {if (file instanceof TFile) this.removeRecentFile(file); await this.storeRecentFiles()})) // Remove recent file if deleted
-        this.registerEvent(this.app.vault.on('rename',  (file) => file instanceof TFile ? this.onFileRename() : null)) // Update displayed name on file rename
-
-        this.loadStoredRecentFiles()
-    }
-
-    private updateRecentFiles(openedFile: TFile | null): void{
-        if(openedFile){
-            recentFiles.update((filesArray) => {
-                // If file is already in the recent files list update only the timestamp
-                if(filesArray.some((item) => item.file === openedFile)){
-                    const itemIndex = filesArray.findIndex((item) => item.file === openedFile)
-                    filesArray[itemIndex].timestamp = Date.now()
+        this.active = true
+        this.registerEvent(this.app.workspace.on('file-open', file => {
+            if (!file) return
+            this.openedHistory = [{ file, timestamp: Date.now() }, ...this.openedHistory.filter(item => item.file !== file)]
+            this.refresh()
+        }))
+        this.registerEvent(this.app.vault.on('modify', file => {
+            this.hiddenModified.delete(file.path)
+            if (this.plugin.settings.recentFileMode === 'modified') this.refresh()
+        }))
+        this.registerEvent(this.app.vault.on('create', () => {
+            if (this.plugin.settings.recentFileMode === 'modified') this.refresh()
+        }))
+        this.registerEvent(this.app.vault.on('delete', file => {
+            if (file instanceof TFile) this.removeRecentFile(file)
+        }))
+        this.registerEvent(this.app.vault.on('rename', () => this.refresh()))
+        this.app.workspace.onLayoutReady(() => {
+            if (!this.active) return
+            if (this.plugin.settings.storeRecentFile) {
+                for (const item of this.plugin.settings.recentFilesStore) {
+                    const file = this.app.vault.getFileByPath(item.filepath)
+                    if (file && !this.openedHistory.some(entry => entry.file === file)) this.openedHistory.push({ file, timestamp: item.timestamp })
                 }
-                // If the recent files list is full replace the last (oldest) item
-                else if(filesArray.length >= this.pluginSettings.maxRecentFiles){
-                    filesArray[filesArray.length - 1] = {
-                        file: openedFile,
-                        timestamp: Date.now()
-                    }
-                }
-                // If there is space and the file is not already in the recent files list add it
-                else{
-                    filesArray.push({
-                        file: openedFile,
-                        timestamp: Date.now(),
-                    })
-                }
-                // Sort files by descending (new to old) opening time
-                return filesArray.sort((a,b) => b.timestamp - a.timestamp)
-            })
-        }
-    }
-    
-    removeRecentFile(file: TFile): void{
-        recentFiles.update((filesArray) => {
-            const index = filesArray.findIndex((recentFile) => recentFile.file === file)
-            if (index >= 0) filesArray.splice(index, 1)
-            return filesArray
+            }
+            this.refresh()
         })
-
-        void this.storeRecentFiles()
     }
 
-    onNewMaxListLenght(newValue: number){
-        const currentLenght = get(recentFiles).length
-        if(newValue < currentLenght){
-            this.removeRecentFiles(currentLenght - newValue)
-        }
+    refresh(): void {
+        const s = this.plugin.settings
+        this.openedHistory = this.openedHistory.filter(item => !excludedRecentPath(item.file.path, s.recentExcludedFolders ?? ''))
+            .sort((a, b) => b.timestamp - a.timestamp).slice(0, s.maxRecentFiles)
+        const entries = s.recentFileMode === 'modified'
+            ? this.app.vault.getFiles().filter(file => !this.hiddenModified.has(file.path)).map(file => ({ file, timestamp: file.stat.mtime }))
+            : this.openedHistory
+        recentFiles.set(entries.filter(item => !excludedRecentPath(item.file.path, s.recentExcludedFolders ?? ''))
+            .sort((a, b) => b.timestamp - a.timestamp).slice(0, s.maxRecentFiles))
+        this.scheduleSave()
     }
 
-    private removeRecentFiles(number: number){
-        recentFiles.update((filesArray) => {
-            filesArray.splice(filesArray.length - number, number)
-            return filesArray
-        })
-        
-        void this.storeRecentFiles()
+    removeRecentFile(file: TFile): void {
+        this.openedHistory = this.openedHistory.filter(item => item.file !== file)
+        this.hiddenModified.add(file.path)
+        recentFiles.update(entries => entries.filter(item => item.file !== file))
+        this.scheduleSave()
     }
 
-    private onFileRename(): void{
-        // Trigger refresh of svelte component, not sure if it's the best approach
-        recentFiles.update((filesArray) => filesArray)
+    clear(): void {
+        this.openedHistory = []
+        if (this.plugin.settings.recentFileMode === 'modified') this.app.vault.getFiles().forEach(file => this.hiddenModified.add(file.path))
+        recentFiles.set([])
+        this.scheduleSave()
     }
 
-    private async storeRecentFiles(): Promise<void>{
-        if(this.plugin.settings.storeRecentFile){
-            let storeObj: recentFileStore[] = []
-            get(recentFiles).forEach((item) => storeObj.push({
-                filepath: item.file.path, // Store only the path instead of the entire TFile instance
-                timestamp: item.timestamp
-            }))
-            this.plugin.settings.recentFilesStore = storeObj
-            await this.plugin.saveData(this.plugin.settings)
-        }
+    private scheduleSave(): void {
+        if (!this.active) return
+        if (this.saveTimer) window.clearTimeout(this.saveTimer)
+        this.saveTimer = window.setTimeout(() => { this.saveTimer = undefined; void this.storeRecentFiles() }, 250)
     }
 
-    private loadStoredRecentFiles(): void{
-        if(this.plugin.settings.storeRecentFile){
-            let filesToLoad: recentFile[] = []
-            this.app.workspace.onLayoutReady(() => { 
-                this.plugin.settings.recentFilesStore.forEach((item) => {
-                    let file: TAbstractFile | null = this.app.vault.getAbstractFileByPath(item.filepath)
-                    if(file && file instanceof TFile){
-                        filesToLoad.push({
-                            file: file,
-                            timestamp: item.timestamp
-                        })
-                    }
-                })
-                recentFiles.set(filesToLoad)
-            })
-        }
+    private async storeRecentFiles(): Promise<void> {
+        this.plugin.settings.recentFilesStore = this.plugin.settings.storeRecentFile
+            ? this.openedHistory.map(item => ({ filepath: item.file.path, timestamp: item.timestamp })) : []
+        await this.plugin.saveData(this.plugin.settings)
     }
 
+    onunload(): void {
+        this.active = false
+        if (this.saveTimer) { window.clearTimeout(this.saveTimer); this.saveTimer = undefined; void this.storeRecentFiles() }
+    }
 }
-

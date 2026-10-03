@@ -114,12 +114,17 @@ export function getUnresolvedMarkdownFiles(app: App): SearchFile[]{
 
 }
 
-export function getSearchFiles(app: App, unresolvedLinks?: boolean): SearchFile[]{
+export function getSearchFiles(app: App, unresolvedLinks?: boolean, searchHeadings = false): SearchFile[]{
     const files = app.vault.getFiles()
     const fileList: SearchFile[] = []
 
     files.forEach(f => {
         fileList.push(generateSearchFile(app, f))
+        if (searchHeadings && f.extension === 'md') {
+            for (const { heading } of app.metadataCache.getFileCache(f)?.headings ?? []) {
+                fileList.push({ ...generateSearchFile(app, f), basename: heading, aliases: undefined, heading })
+            }
+        }
     })
 
     if(unresolvedLinks){

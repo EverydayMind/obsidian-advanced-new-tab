@@ -1,4 +1,4 @@
-import type { App, EventRef } from 'obsidian'
+import type { App, EventRef, TFolder } from 'obsidian'
 import type { OmnisearchApi } from './suggester/omnisearchSuggester'
 
 type RecordValue = Record<string, unknown>
@@ -49,4 +49,26 @@ export function getOmnisearchApi(app: App, host: Window): OmnisearchApi | undefi
         if (isRecord(api) && typeof api.search === 'function') return api as unknown as OmnisearchApi
     }
     return undefined
+}
+
+export function getDailyNoteOptions(app: App): { folder: string; format: string; template: string } | undefined {
+    const plugin = getCorePlugin(app, 'daily-notes')
+    if (!plugin) return undefined
+    const instance = isRecord(plugin.instance) ? plugin.instance : undefined
+    const options = isRecord(instance?.options) ? instance.options : isRecord(plugin.options) ? plugin.options : {}
+    return {
+        folder: typeof options.folder === 'string' ? options.folder : '',
+        format: typeof options.format === 'string' && options.format ? options.format : 'YYYY-MM-DD',
+        template: typeof options.template === 'string' ? options.template : '',
+    }
+}
+
+export async function revealVaultFolder(app: App, folder: TFolder): Promise<boolean> {
+    if (!getCorePlugin(app, 'file-explorer')) return false
+    const leaf = app.workspace.getLeavesOfType('file-explorer')[0]
+    const view = leaf?.view as unknown as { revealInFolder?: (folder: TFolder) => void | Promise<void> } | undefined
+    if (typeof view?.revealInFolder !== 'function') return false
+    await view.revealInFolder(folder)
+    await app.workspace.revealLeaf(leaf)
+    return true
 }

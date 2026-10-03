@@ -3,7 +3,8 @@ import { generateTemplateNoteName, renderTemplateContent } from './utils/templat
 import type momentFactory from 'moment';
 import { t } from './i18n';
 import { getCorePlugin } from './integrations'
-import type { Writable } from "svelte/store";
+import { get, type Writable } from "svelte/store";
+import { vaultPath } from './utils/pathUtils';
 import type HomeTab from "./main";
 
 type TemplatePluginInstance = {
@@ -144,9 +145,13 @@ export class TemplateManager extends Component {
         await this.creationQueue
     }
 
+    public getTemplateFiles(): TFile[] { return get(this.templatesStore) }
+
     private async createNote(template: TFile, newTab?: boolean): Promise<void> {
         try {
-            const targetFolder = this.app.fileManager.getNewFileParent('').path
+            const mappedFolder = this.plugin.settings.templateTargets?.find(item => item.template === template.path)?.folder.trim()
+            const targetFolder = mappedFolder ? vaultPath(mappedFolder) : this.app.fileManager.getNewFileParent('').path
+            if (mappedFolder && mappedFolder !== '/' && !(this.app.vault.getAbstractFileByPath(targetFolder) instanceof TFolder)) throw new Error('Template target folder does not exist')
             const now = (moment as unknown as typeof momentFactory)()
             const baseName = generateTemplateNoteName(template.basename, now,
                 this.plugin.settings.newNoteNameFormat, this.plugin.settings.templateWordsToStrip)

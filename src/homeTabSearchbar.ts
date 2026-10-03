@@ -9,7 +9,7 @@ import OmnisearchSuggester from "./suggester/omnisearchSuggester";
 import SurfingSuggester from "./suggester/surfingSuggester";
 import { fileTypes, type FileExtension, type FileType, fileExtensions } from "./utils/getFileTypeUtils";
 
-export type SearchBarFilterType = 'fileExtension' | 'fileType' | 'webSearch' | 'omnisearch' | 'default'
+export type SearchBarFilterType = 'fileExtension' | 'fileType' | 'webSearch' | 'omnisearch' | 'template' | 'default'
 
 const omnisearchKeys = ['omnisearch', 'omni'] as const
 const webSearchKeys = ['surfing', 'web', 'internet'] as const
@@ -22,13 +22,14 @@ export type FileTypesearchFilterKey = FileType
 type FilterKeyLookupTable = {[key in SearchBarFilterType]: string[]}
 const filterKeysLookupTable: FilterKeyLookupTable = {
     default: [],
+    template: ['template', 'tpl'],
     omnisearch: [...omnisearchKeys],
     webSearch: [...webSearchKeys],
     fileType: [...fileTypes],
     fileExtension: [...fileExtensions],
 }
 
-export const filterKeys = [...filterKeysLookupTable.omnisearch, ...filterKeysLookupTable.webSearch, 
+export const filterKeys = [...filterKeysLookupTable.template, ...filterKeysLookupTable.omnisearch, ...filterKeysLookupTable.webSearch,
                     ...filterKeysLookupTable.fileType, ...filterKeysLookupTable.fileExtension]
 
 export type FilterKey = typeof filterKeys[number]
@@ -43,10 +44,18 @@ export default class HomeTabSearchBar {
     private unsubscribe?: () => void
     private signature = ''
 
-    constructor(private plugin: HomeTab, public openFile: (file: TFile, newTab?: boolean) => void, public sourcePath = '',
+    constructor(private plugin: HomeTab, public openFile: (file: TFile, newTab?: boolean, heading?: string) => void, public sourcePath = '',
         public openUrl: (url: string, newTab?: boolean) => void = (url, newTab) => { void plugin.openWebUrl(url, newTab) }) {}
 
     focusSearchbar(): void { get(this.searchBarEl)?.focus() }
+    async captureInput(): Promise<void> {
+        const input = get(this.searchBarEl)
+        const value = input?.value ?? ''
+        if (await this.plugin.captureToDailyNote(value)) {
+            if (input.value === value) this.fileSuggester.setInput('')
+        }
+    }
+    get captureEnabled(): boolean { return this.plugin.settings.captureEnabled }
     load(): void {
         this.updateActiveSuggester('default', false)
         this.signature = this.settingsSignature()
@@ -57,7 +66,7 @@ export default class HomeTabSearchBar {
     }
     private settingsSignature(): string {
         const s = this.plugin.settings
-        return JSON.stringify([s.language, s.omnisearch, s.markdownOnly, s.unresolvedLinks, s.maxResults, s.searchDelay, s.showShortcuts, s.selectionHighlight, s.showPath, s.showOmnisearchExcerpt])
+        return JSON.stringify([s.language, s.omnisearch, s.markdownOnly, s.unresolvedLinks, s.searchHeadings, s.templateFolderOverride, s.maxResults, s.searchDelay, s.showShortcuts, s.selectionHighlight, s.showPath, s.showOmnisearchExcerpt])
     }
     refresh(): void {
         const input = get(this.searchBarEl)
@@ -88,12 +97,13 @@ export default class HomeTabSearchBar {
         this.filterKey = key
         this.activeFilter = filter
         filterEl.toggleClass('hide', filter === 'default')
-        filterEl.setText(filter === 'fileType' || filter === 'fileExtension' ? key : filter === 'webSearch' ? 'Surfing' : 'Omnisearch')
+        filterEl.setText(filter === 'fileType' || filter === 'fileExtension' ? key : filter === 'template' ? t('filter.templates') : filter === 'webSearch' ? 'Surfing' : 'Omnisearch')
         if (filter === 'webSearch') this.fileSuggester = new SurfingSuggester(app, this.plugin, this)
         else if (filter === 'omnisearch' || filter === 'default' && this.plugin.settings.omnisearch && getOmnisearchApi(app, get(this.searchBarEl).ownerDocument.defaultView))
             this.fileSuggester = new OmnisearchSuggester(app, this.plugin, this)
         else {
             this.fileSuggester = new HomeTabFileSuggester(app, this.plugin, this)
+            if (filter === 'template') this.fileSuggester.setTemplateFilter()
             if (filter === 'fileExtension' || filter === 'fileType') this.fileSuggester.setFileFilter(key as FileType | FileExtension)
         }
         if (query) this.fileSuggester.setInput('')

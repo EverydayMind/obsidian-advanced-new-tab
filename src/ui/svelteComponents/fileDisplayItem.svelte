@@ -5,11 +5,13 @@
     import type { HomeTabSettings } from 'src/settings'
     import { createEventDispatcher } from 'svelte'
     import { i18n } from 'src/i18n'
+    import { showHoverPreview } from '../../hoverPreview'
     export let app: App
     export let file: TFile
     export let pluginSettings: HomeTabSettings
     export let contextualMenu: Menu
     export let customIcon: string | undefined = undefined
+    export let detail: string = ''
     const dispatch = createEventDispatcher<{ itemMenu: { file: TFile } }>()
     const icons: Record<string, string> = { markdown: 'file-text', image: 'file-image', video: 'file-video', audio: 'file-audio', pdf: 'file-chart-pie' }
     $: filename = file.basename
@@ -27,9 +29,10 @@
 </script>
 
 <div class="advanced-new-tab-file-item" class:use-accent-color={pluginSettings.selectionHighlight === 'accentColor'}>
-    <button type="button" class="advanced-new-tab-file-item-open" on:click={open} on:auxclick={event => { if (event.button === 1) open(event) }} on:contextmenu={showMenu}>
+    <button type="button" class="advanced-new-tab-file-item-open" on:mouseenter={event => showHoverPreview(app, file, event, pluginSettings.hoverPreview)} on:click={open} on:auxclick={event => { if (event.button === 1) open(event) }} on:contextmenu={showMenu}>
         <div class="advanced-new-tab-file-item-preview-icon"><Icon name={icon}/></div>
         <div class="advanced-new-tab-file-item-name">{filename}</div>
+        {#if detail}<div class="advanced-new-tab-file-item-detail">{detail}</div>{/if}
     </button>
     <button type="button" class="advanced-new-tab-file-item-remove_btn" aria-label={$i18n('menu.fileOptions')} on:click={showMenu}>
         <Icon name="ellipsis"/>
@@ -37,6 +40,7 @@
 </div>
 
 <style>
+    .advanced-new-tab-file-item-detail { color: var(--text-muted); font-size: var(--font-ui-smaller); text-align: center; overflow-wrap: anywhere; }
     .advanced-new-tab-file-item{
         margin: 5px;
         padding: 5px;
