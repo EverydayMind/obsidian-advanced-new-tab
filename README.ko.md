@@ -10,16 +10,24 @@
 
 1.0.0 개발 중이며 커뮤니티 디렉터리 등록과 정식 릴리스는 아직 이루어지지 않았습니다. 최소 Obsidian 버전은 **1.13.0**입니다. 데스크톱·모바일 실제 앱 검증이 남아 있습니다.
 
-홈 화면은 앱 언어를 따르며 영어·한국어를 직접 선택할 수도 있습니다. 설정 화면과 일부 보조 메시지는 아직 영어이며 전체 번역과 선언형 설정 전환이 남아 있습니다.
+홈 화면·설정·메뉴·안내 메시지는 앱 언어를 따르며 영어·한국어를 직접 선택할 수도 있습니다. 설정은 Obsidian 1.13의 검색 가능한 선언형 API를 사용합니다.
 
 ## 사용법
 
 - 새 빈 탭을 자동으로 시작 화면으로 바꾸거나 명령어 팔레트·리본에서 직접 엽니다.
 - 파일 이름과 별칭을 검색합니다. `md`, `image`, `pdf`, `canvas` 등의 필터 키를 입력하고 Tab을 누릅니다. 빈 입력에서 Backspace로 해제합니다.
 - 방향키로 선택, Enter로 열기, Ctrl/Cmd+Enter로 새 탭에 열기, Shift+Enter로 새 노트를 생성합니다. 기본 전역 단축키는 지정하지 않습니다.
-- HTTP(S) URL 또는 도메인을 입력하면 링크 열기 제안이 표시됩니다. Web viewer 연결은 실제 앱 검증이 필요합니다.
+- HTTP(S) URL 또는 도메인을 입력하면 **Web viewer 코어 플러그인**으로 엽니다. 일반 선택은 현재 탭, Ctrl/Cmd 선택은 새 탭을 사용합니다. 데스크톱에서 Web viewer를 켜야 하며, 사용할 수 없으면 안내를 표시합니다. 기본·Omnisearch·Surfing 검색 모드 모두 같은 경로를 사용합니다.
 - 북마크·최근 파일·템플릿·빠른 작업·안내문·리본 아이콘을 각각 표시하거나 숨길 수 있습니다.
 - Omnisearch와 Surfing 선택 연동을 유지합니다.
+
+## 빠른 작업과 섹션 순서
+
+기본 새 노트·일일 노트 버튼에 사용자 지정 명령 또는 보관함 파일 바로가기를 추가할 수 있습니다. 설정의 사용자 지정 빠른 작업에서 명령을 검색하거나 파일을 선택하고 버튼 이름·아이콘 ID·새 탭 여부를 설정합니다. 목록을 끌어 순서를 바꾸거나 삭제 버튼으로 제거합니다. 대상 파일이나 명령을 사용할 수 없으면 안내합니다.
+
+‘새 베이스’, ‘새 캔버스’, ‘웹 뷰어 열기’는 해당 코어 플러그인이 활성화된 경우에만 나타납니다. 기본 새 탭과 같은 코어 명령과 Ctrl/Cmd 입력을 사용하므로 파일 생성 설정과 웹 뷰어 홈페이지도 Obsidian 설정을 따릅니다. 새 노트 버튼의 문구는 ‘새 노트’입니다.
+
+섹션 순서 목록에서 북마크·최근 파일·템플릿 순서를 바꿉니다. 중첩된 코어 북마크 그룹의 파일도 표시합니다. Advanced New Tab이 활성화된 동안 검색창으로 이동 명령을 사용할 수 있습니다.
 
 ## 템플릿
 
@@ -34,7 +42,7 @@ Templates 코어 플러그인의 폴더를 사용하거나 `Template folder over
 ## 노트에 검색창 넣기
 
 ````markdown
-```search-bar
+```advanced-new-tab
 show bookmarked files
 show recent files
 ```
@@ -42,13 +50,17 @@ show recent files
 
 `only search bar`로 제목·로고를 숨깁니다. 과거 옵션 `show starred files`도 북마크 표시 별칭으로 지원합니다.
 
-뷰 타입·블록 이름·CSS 이름이 아직 원본 플러그인과 겹칩니다. 이름 분리가 끝나기 전에는 두 플러그인을 동시에 활성화하지 마세요.
+뷰 타입은 `advanced-new-tab-view`, 블록 이름은 `advanced-new-tab`이며 CSS도 독립 네임스페이스를 사용합니다. 기존 노트의 `search-bar` 코드 펜스를 `advanced-new-tab`으로 바꾸세요. 원본 블록 이름은 Home tab·Harbor Tab에서 사용할 수 있도록 등록하지 않습니다. 기존 `home-tab-view` 레이아웃은 두 플러그인이 꺼져 있을 때만 이전합니다.
 
 ## 설치와 개발
 
 현재 커뮤니티 설치 링크·정식 릴리스는 없습니다. 릴리스 공개 후 `main.js`, `manifest.json`, `styles.css`를 `.obsidian/plugins/advanced-new-tab/`에 복사하여 활성화합니다.
 
-개발자는 `.nvmrc`의 Node 버전으로 `npm ci`, `npm test`, `npm run build`를 실행합니다. PowerShell 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`를 사용합니다. 개발 빌드는 인접 `developmentVault`에 출력합니다.
+개발자는 `.nvmrc`의 Node 버전으로 `npm ci`, `npm run lint`, `npm test`, `npm run build`를 실행합니다. PowerShell 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`를 사용합니다. 개발 빌드는 인접 `developmentVault`에 출력합니다.
+
+UI는 Svelte 5의 기존 템플릿 문법과 공개 mount/unmount API를 사용합니다. 실제 DOM 테스트로 바인딩·언어 변경·빠른 작업 클릭·안전한 텍스트 강조·터치 선택을 검증합니다. TypeScript 소스에는 공식 Obsidian lint 규칙을 적용하고 Svelte lint·타입 검사도 실행합니다. 실제 앱 검증과 디렉터리 preview scan은 출시 전에 완료해야 합니다.
+
+코어 플러그인 조회·명령 실행·Omnisearch 조회·Web viewer 뷰 식별자는 공개 SDK 계약이 없어 가용성을 확인하는 호환 계층에 모았습니다. Web viewer 경로는 설치된 Obsidian 1.14.4 코드와 모의 탐색 테스트로 확인했으며 최소 지원 버전의 실제 앱 검증이 남아 있습니다.
 
 ## 개인정보
 

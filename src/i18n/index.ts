@@ -2,6 +2,7 @@ import { getLanguage } from 'obsidian'
 import { get, writable } from 'svelte/store'
 import { createTranslator } from './translator'
 import type { MessageKey } from './locales/en'
+export type { MessageKey } from './locales/en'
 
 export const i18n = writable(createTranslator('en'))
 export function initI18n(preference: string): void {

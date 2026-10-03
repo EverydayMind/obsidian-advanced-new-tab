@@ -1,38 +1,38 @@
 <script lang="ts">
-	import { App, Menu, Notice, TFile, View } from "obsidian";
+    import { onDestroy } from "svelte"
+	import { type App, Menu, type TFile } from "obsidian";
     import { i18n } from '../i18n';
 	import type { HomeTabSettings } from "src/settings";
 	import { IconSelectionModal } from "src/iconSelectionModal";
 	import FileDisplayItem from "./svelteComponents/fileDisplayItem.svelte";
 	import type { bookmarkedFile, bookmarkedFilesManager } from "src/bookmarkedFiles";
 
-    export let view: View
+    export let app: App
     export let bookmarkedFiles: bookmarkedFile[]
     export let pluginSettings: HomeTabSettings
     export let bookmarkedFileManager: bookmarkedFilesManager
 
-    const app: App = view.leaf.app
 
     let selectedFile: TFile
 
     const selectIconModal: IconSelectionModal = new IconSelectionModal(app, undefined, (icon) => bookmarkedFileManager.updateFileIcon(selectedFile, icon))
 
-    const contextualMenu: Menu = new Menu()
+    $: contextualMenu = new Menu()
             .addItem((item) => item
-                .setTitle('Remove bookmark')
+                .setTitle($i18n('menu.removeBookmark'))
                 .setIcon('trash-2')
                 .onClick(() => bookmarkedFileManager.removeBookmark(selectedFile)))
             .addSeparator()
             .addItem((item) => item
-                .setTitle('Set custom icon')
+                .setTitle($i18n('menu.customIcon'))
                 .setIcon('plus')
                 .onClick(() => selectIconModal.open()))
-            .setUseNativeMenu(app.vault.config.nativeMenus)  
+    onDestroy(() => selectIconModal.close())
 </script>
 
-<div class="home-tab-bookmarked-section">
-    <div class="home-tab-bookmarked-title">{$i18n('section.bookmarks')}</div>
-    <div class="home-tab-bookmarked-files-container">
+<div class="advanced-new-tab-bookmarked-section">
+    <div class="advanced-new-tab-bookmarked-title">{$i18n('section.bookmarks')}</div>
+    <div class="advanced-new-tab-bookmarked-files-container">
         {#each bookmarkedFiles as item (item.file.path)}
             <FileDisplayItem file={item.file} customIcon={item.iconId} {app} {pluginSettings} {contextualMenu}
             on:itemMenu={(e) => selectedFile = e.detail.file}/>
@@ -41,7 +41,7 @@
 </div>
 
 <style>
-    .home-tab-bookmarked-section{
+    .advanced-new-tab-bookmarked-section{
         width: 65%;
         max-width: 900px;
         margin: 30px auto 0;
@@ -50,13 +50,13 @@
         border-radius: var(--radius-m);
         padding: 14px 16px;
     }
-    .home-tab-bookmarked-title{
+    .advanced-new-tab-bookmarked-title{
         text-align: center;
         font-weight: 600;
         font-size: var(--font-ui-large);
         padding-bottom: 8px;
     }
-    .home-tab-bookmarked-files-container{
+    .advanced-new-tab-bookmarked-files-container{
         display: flex;
         align-items: baseline;
         justify-content: center;

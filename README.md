@@ -10,7 +10,7 @@ A start page for empty Obsidian tabs, with fuzzy file search, bookmarks, recent 
 
 Version 1.0.0 is under development and has not yet been submitted to the community directory. Requires Obsidian **1.13.0 or later**. Desktop and mobile compatibility still need manual verification before release.
 
-The home page follows the Obsidian language, with English and Korean overrides. Settings and some auxiliary messages currently remain in English; translation and declarative settings migration are in progress.
+The home page, settings, menus, and notices follow the Obsidian language, with English and Korean overrides. Settings use the searchable declarative API introduced in Obsidian 1.13.
 
 ## Features
 
@@ -19,6 +19,7 @@ The home page follows the Obsidian language, with English and Korean overrides. 
 - Optional unresolved-link suggestions that create the missing note.
 - Bookmarks, recent files, and templates in separate sections.
 - Quick actions to create a blank note or open today's daily note.
+- New base, New canvas, and Open web viewer buttons appear when their respective core plugins are enabled.
 - HTTP(S) links and domain names offer an Open link action in local search.
 - Customize logo, title, font, search result count, and delay.
 - Toggle bookmarks, recent files, templates, quick actions, guide text, and ribbon visibility.
@@ -40,7 +41,15 @@ Type a filter key and press Tab. Press Backspace with an empty input to clear th
 
 Use arrow keys to navigate, Enter to open, Ctrl/Cmd+Enter to open in a new tab, and Shift+Enter to create a note. No global hotkeys are assigned by default; bind commands in Obsidian settings if desired.
 
-An Open link suggestion opens the website through the application's window API. Web viewer routing depends on Obsidian and its settings and still requires desktop QA; mobile normally opens an external browser. Bare filenames such as Note.md are treated as notes. Use an explicit https:// URL for ambiguous hostnames.
+An Open link suggestion opens the URL in the **Web viewer core plugin**, in the current tab or a new tab with Ctrl/Cmd+Enter. This applies to local, Omnisearch, and Surfing search modes. Enable Web viewer on desktop first; when unavailable, the plugin shows an activation notice. Bare filenames such as Note.md are treated as notes. Use an explicit https:// URL for ambiguous hostnames. Surfing remains an optional integration for web search queries.
+
+## Quick actions and layout
+
+Keep the built-in new-note and daily-note buttons, and add custom commands or vault-file shortcuts in Custom quick actions. Choose the command with the search picker or select a vault file; set a button label, optional Obsidian icon ID, and whether file shortcuts open in a new tab. Unavailable commands or moved files show a notice. Drag actions to reorder them and use the list's delete button to remove them.
+
+New base, New canvas, and Open web viewer use the same core commands and click modifiers as Obsidian's default new tab. Each button appears only when that core plugin is enabled. File creation settings and the Web viewer homepage follow Obsidian's own settings.
+
+Drag the entries in Section order to arrange bookmarks, recent files, and templates. Each section has its own visibility toggle. Nested core bookmark groups are included. The Focus search command is available while an Advanced New Tab is active.
 
 ## Templates
 
@@ -55,7 +64,7 @@ New note name format and Words to strip from template name can override this rul
 ## Embedded search
 
 ````markdown
-```search-bar
+```advanced-new-tab
 show bookmarked files
 show recent files
 ```
@@ -63,7 +72,7 @@ show recent files
 
 `only search bar` hides the title/logo area. `show starred files` is accepted as a legacy alias for `show bookmarked files`.
 
-The view type, block identifier, and CSS namespace are still shared with the upstream plugin. Their migration is a release blocker; do not enable both plugins simultaneously during this development stage.
+The view type is `advanced-new-tab-view`, the block identifier is `advanced-new-tab`, and plugin CSS uses its own namespace. In existing notes, change the fence language from `search-bar` to `advanced-new-tab`. This plugin leaves the original block identifier available to upstream Home tab and Harbor Tab. Legacy `home-tab-view` layout entries are migrated only when neither of those plugins is enabled.
 
 ## Installation and development
 
@@ -73,6 +82,7 @@ Use the Node version in .nvmrc:
 
 ```sh
 npm ci
+npm run lint
 npm test
 npm run build
 ```
@@ -80,6 +90,10 @@ npm run build
 On Windows PowerShell, use npm.cmd if npm.ps1 is blocked by the execution policy. Production writes main.js and styles.css to the repository root. `npm run dev` writes those assets and manifest.json to the sibling developmentVault under the manifest ID. Build outputs are distributed as release attachments.
 
 Use `npm version <x.y.z> --no-git-tag-version` to prepare compatibility metadata. Create the first release tag only after release QA.
+
+The UI uses Svelte 5 with its legacy template syntax and the public mount/unmount API. Client DOM tests cover store bindings, translation changes, quick-action clicks, safe text highlighting, and touch selection. Official Obsidian lint rules run on TypeScript sources; Svelte lint and type checks run separately. Directory preview scan and real-app testing remain required before release.
+
+Core plugin discovery, command execution, Omnisearch discovery, and Web viewer state identifiers have no public SDK contract; guarded compatibility helpers isolate those boundaries. Web viewer routing was checked against the locally installed Obsidian 1.14.4 implementation and mocked navigation tests; full testing on the minimum supported version is pending.
 
 ## Privacy
 
@@ -89,9 +103,9 @@ A configured logo image URL causes an image request when the page is rendered. O
 
 ## Contributing and translations
 
-Discuss substantial changes in an issue, or submit a pull request with an explanation and relevant verification. Run npm ci, npm test, and npm run build. Add focused regression coverage for note creation and integration changes. Release plans and agent instructions are local documents and are not part of this repository.
+Discuss substantial changes in an issue, or submit a pull request with an explanation and relevant verification. Run npm ci, npm run lint, npm test, and npm run build. Add focused regression coverage for note creation and integration changes. Release plans and agent instructions are local documents and are not part of this repository.
 
-Locale dictionaries live in src/i18n/locales. English defines the keys; missing translations fall back to English. Settings and remaining messages are still being migrated. Do not translate persisted filter keys or block options.
+Locale dictionaries live in src/i18n/locales. English defines the keys; missing translations fall back to English. Tests check that English and Korean have matching keys. Do not translate persisted filter keys or block options.
 
 ## Security reports
 

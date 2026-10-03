@@ -1,9 +1,10 @@
 {
-  "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
     "target": "ES2021",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
     "lib": ["DOM", "ES2021"],
     "types": ["node", "obsidian"],
     "allowSyntheticDefaultImports": true,

@@ -2,6 +2,7 @@ import { Component, Notice, TFile, TFolder, Vault, moment, normalizePath, type A
 import { generateTemplateNoteName, renderTemplateContent } from './utils/templateUtils';
 import type momentFactory from 'moment';
 import { t } from './i18n';
+import { getCorePlugin } from './integrations'
 import type { Writable } from "svelte/store";
 import type HomeTab from "./main";
 
@@ -46,10 +47,10 @@ export class TemplateManager extends Component {
             return
         }
         if (details !== undefined) {
-            console.info(`[advanced-new-tab][templates] ${message}`, details)
+            console.debug(`[advanced-new-tab][templates] ${message}`, details)
             return
         }
-        console.info(`[advanced-new-tab][templates] ${message}`)
+        console.debug(`[advanced-new-tab][templates] ${message}`)
     }
 
     private updateStatus(message: string): void {
@@ -80,7 +81,7 @@ export class TemplateManager extends Component {
     }
 
     private getTemplatesPlugin(): TemplateInternalPlugin | undefined {
-        return this.app.internalPlugins.getPluginById('templates') as TemplateInternalPlugin | undefined
+        return getCorePlugin(this.app, 'templates')
     }
 
     public isTemplatesPluginEnabled(): boolean {
@@ -118,7 +119,7 @@ export class TemplateManager extends Component {
         const folderPath = this.getTemplateFolderPath()
         if (!folderPath) {
             this.templatesStore.set([])
-            this.updateStatus('Templates core plugin folder could not be resolved.')
+            this.updateStatus(t('templates.unconfigured'))
             return
         }
 
@@ -133,7 +134,7 @@ export class TemplateManager extends Component {
         templates.sort((a, b) => a.path.localeCompare(b.path))
 
         this.templatesStore.set(templates)
-        this.updateStatus(templates.length > 0 ? '' : `No markdown templates found in "${folderPath}".`)
+        this.updateStatus(templates.length > 0 ? '' : t('templates.notFound', { folder: folderPath }))
         this.log(`Loaded ${templates.length} template(s).`, templates.map((file) => file.path))
     }
 
@@ -159,7 +160,7 @@ export class TemplateManager extends Component {
 
             const options = this.getTemplatesPlugin()
             const content = renderTemplateContent(await this.app.vault.cachedRead(template),
-                filePath.split('/').pop()!.slice(0, -3), now,
+                filePath.split('/').pop().slice(0, -3), now,
                 options?.instance?.options?.dateFormat?.trim() || options?.options?.dateFormat?.trim() || 'YYYY-MM-DD',
                 options?.instance?.options?.timeFormat?.trim() || options?.options?.timeFormat?.trim() || 'HH:mm')
             const created = await this.app.vault.create(filePath, content)

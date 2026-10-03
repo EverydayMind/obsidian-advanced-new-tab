@@ -5,7 +5,7 @@
 	import Suggestion from './suggestion.svelte';
 
     export let index: number
-    export let textInputSuggester: TextInputSuggester<SurfingItem>
+    export let textInputSuggester: TextInputSuggester<Fuse.FuseResult<SurfingItem>>
     export let selectedItemIndex: number
     export let suggestion: Fuse.FuseResult<SurfingItem>
     
@@ -15,13 +15,13 @@
 </script>
 
 <Suggestion {index} {textInputSuggester} {selectedItemIndex}
-    suggestionTitleClass={`suggestion-title home-tab-suggestion-title}`}>
+    suggestionTitleClass={`suggestion-title advanced-new-tab-suggestion-title}`}>
     <!-- Site name -->
     <svelte:fragment slot="suggestion-title">
         <span>{suggestionItem.name}</span>
     </svelte:fragment>
     <svelte:fragment slot="suggestion-aux">
-        <span class='home-tab-suggestion-tip'>{info}</span>
+        <span class='advanced-new-tab-suggestion-tip'>{info}</span>
     </svelte:fragment>
     <!-- Site details -->
     <svelte:fragment slot="suggestion-extra-content">

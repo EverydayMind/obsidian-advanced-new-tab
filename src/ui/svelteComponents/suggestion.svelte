@@ -2,11 +2,11 @@
 	import type { Suggester, TextInputSuggester } from "src/suggester/suggester";
 
     export let index: number
-    // export let suggester: Suggester<any>
-    export let textInputSuggester: TextInputSuggester<any>
+    // export let suggester: Suggester<unknown>
+    export let textInputSuggester: TextInputSuggester<unknown>
     export let selectedItemIndex: number
 
-    let suggester: Suggester<any> = textInputSuggester.getSuggester()
+    let suggester: Suggester<unknown> = textInputSuggester.getSuggester()
 
     export let suggestionItemClass: string | undefined = undefined
     export let suggestionContentClass: string | undefined = undefined
@@ -14,11 +14,13 @@
     export let suggestionAuxClass: string | undefined = undefined
 
     function handlePrimaryAction(): void{
-        textInputSuggester.useSelectedItem(suggester.getSelectedItem())
+        const item = suggester.getSuggestionByIndex(index)
+        if (item !== undefined) textInputSuggester.useSelectedItem(item)
     }
 
     function handleSecondaryAction(): void{
-        textInputSuggester.useSelectedItem(suggester.getSelectedItem(), true)
+        const item = suggester.getSuggestionByIndex(index)
+        if (item !== undefined) textInputSuggester.useSelectedItem(item, true)
     }
 
     function handleKeydown(event: KeyboardEvent): void{
@@ -31,9 +33,11 @@
 
 <div class="{suggestionItemClass ?? 'suggestion-item mod-complex'}" 
     class:is-selected="{selectedItemIndex === index}"
-    role="button"
+    role="option"
+    aria-selected={selectedItemIndex === index}
     tabindex="0"
     on:mousemove="{() => suggester.setSelectedItemIndex(index)}"
+    on:focus="{() => suggester.setSelectedItemIndex(index)}"
     on:click="{handlePrimaryAction}"
     on:keydown="{handleKeydown}"
     on:auxclick="{(e) => {if(e.button === 1){handleSecondaryAction()}}}">

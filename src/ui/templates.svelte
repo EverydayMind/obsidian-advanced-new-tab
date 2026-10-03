@@ -8,26 +8,26 @@
     export let templateManager: TemplateManager
 
     function handleTemplateClick(event: MouseEvent, template: TFile): void {
-        templateManager.createNoteFromTemplate(template, Keymap.isModEvent(event))
+        templateManager.createNoteFromTemplate(template, !!Keymap.isModEvent(event))
     }
 </script>
 
-<div class="home-tab-templates-container">
-    <div class="home-tab-templates-title">
+<div class="advanced-new-tab-templates-container">
+    <div class="advanced-new-tab-templates-title">
         {$i18n('section.templates')}
     </div>
-    <div class="home-tab-templates-description">
+    <div class="advanced-new-tab-templates-description">
         {$i18n('templates.description')}
     </div>
-    <div class="home-tab-templates-links">
+    <div class="advanced-new-tab-templates-links">
         {#if templates.length > 0}
             {#each templates as template (template.path)}
-                <button class="home-tab-template-link" on:click={(event) => handleTemplateClick(event, template)}>
+                <button class="advanced-new-tab-template-link" on:click={(event) => handleTemplateClick(event, template)}>
                     {template.basename}
                 </button>
             {/each}
         {:else}
-            <div class="home-tab-template-empty">
+            <div class="advanced-new-tab-template-empty">
                 {status || $i18n('templates.empty')}
             </div>
         {/if}
@@ -35,7 +35,7 @@
 </div>
 
 <style>
-    .home-tab-templates-container{
+    .advanced-new-tab-templates-container{
         width: 65%;
         max-width: 900px;
         display: flex;
@@ -47,14 +47,14 @@
         padding: 14px 16px;
     }
 
-    .home-tab-templates-title{
+    .advanced-new-tab-templates-title{
         text-align: center;
         font-weight: 600;
         font-size: var(--font-ui-large);
         padding-bottom: 8px;
     }
 
-    .home-tab-templates-links{
+    .advanced-new-tab-templates-links{
         display: flex;
         align-items: center;
         justify-content: center;
@@ -64,14 +64,14 @@
         max-width: 900px;
     }
 
-    .home-tab-templates-description{
+    .advanced-new-tab-templates-description{
         color: var(--text-muted);
         font-size: var(--font-ui-small);
         text-align: center;
         padding-bottom: 10px;
     }
 
-    .home-tab-template-link{
+    .advanced-new-tab-template-link{
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         border-radius: var(--radius-m);
@@ -79,11 +79,11 @@
         cursor: pointer;
     }
 
-    .home-tab-template-link:hover{
+    .advanced-new-tab-template-link:hover{
         background: var(--background-modifier-hover);
     }
 
-    .home-tab-template-empty{
+    .advanced-new-tab-template-empty{
         color: var(--text-muted);
         font-size: var(--font-ui-small);
         text-align: center;

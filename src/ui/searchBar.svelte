@@ -1,15 +1,14 @@
 <script lang="ts">
 	import { Platform } from "obsidian";
     import { i18n } from '../i18n';
-	import { filterKeys, type FilterKey, type SearchBarFilterType } from "src/homeTabSearchbar";
-    import type HomeTabSearchBar from "src/homeTabSearchbar";
+	import { filterKeys, type FilterKey } from "src/homeTabSearchbar";
+    import type SearchBarController from "src/homeTabSearchbar";
     
-    export let HomeTabSearchBar: HomeTabSearchBar
+    export let HomeTabSearchBar: SearchBarController
     export let embedded: boolean = false
     const searchBarEl = HomeTabSearchBar.searchBarEl
     const activeExtEl = HomeTabSearchBar.activeExtEl
     const container = HomeTabSearchBar.suggestionContainerEl
-    // @ts-ignore
     const isPhone = Platform.isPhone
 
     let inputValue = ''
@@ -38,24 +37,24 @@
 
 </script>
 
-<div class="home-tab-searchbar-container" bind:this={$container}>
-    <div class="home-tab-searchbar"
+<div class="advanced-new-tab-searchbar-container" bind:this={$container}>
+    <div class="advanced-new-tab-searchbar"
         class:embedded={embedded}
         style:width={embedded || isPhone ? "90%" : "50%"}>
-        <div class='nav-file-tag home-tab-suggestion-file-tag hide' bind:this={$activeExtEl}></div>
+        <div class='nav-file-tag advanced-new-tab-suggestion-file-tag hide' bind:this={$activeExtEl}></div>
         <input type="search" spellcheck="false" placeholder={$i18n('search.placeholder')} bind:value={inputValue} bind:this={$searchBarEl}
         on:keydown={(e) => handleKeydown(e)}>
     </div>
 </div>
 
 <style>
-    .home-tab-searchbar-container{
+    .advanced-new-tab-searchbar-container{
         display: flex;
         align-items: center;
         flex-direction: column;
     }
     
-    .home-tab-searchbar{
+    .advanced-new-tab-searchbar{
         display: flex;
         /* width: 50%; */
         min-width: 250px;
@@ -71,7 +70,7 @@
         outline: none;
     }
 
-    .home-tab-searchbar input{
+    .advanced-new-tab-searchbar input{
         width: 100%;
         height: 100%;
         box-shadow: none;
@@ -80,24 +79,24 @@
         border: none;
         padding-left: 12px;
     }
-    .home-tab-searchbar input:hover{
+    .advanced-new-tab-searchbar input:hover{
         background: none;
         border: none;
     }
 
-    .home-tab-suggestion-file-tag.hide{
+    .advanced-new-tab-suggestion-file-tag.hide{
         display: none;
     }
 </style>
 
-<!--     .home-tab-searchbar{
+<!--     .advanced-new-tab-searchbar{
         display: flex;
         align-items: center;
         justify-content: center;
         height: calc(var(--input-height)*1.25);
     }
 
-    .home-tab-searchbar input{
+    .advanced-new-tab-searchbar input{
         width: 50%;
         min-width: 250px;
         max-width: 700px;
@@ -109,7 +108,7 @@
         font-size: var(--font-ui-medium);
     }
 
-    .home-tab-searchbar input:focus, .home-tab-searchbar input:active{
+    .advanced-new-tab-searchbar input:focus, .advanced-new-tab-searchbar input:active{
         border-color: var(--background-modifier-border);
     }
  -->

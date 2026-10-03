@@ -1,3 +1,6 @@
+import { getCommunityPlugin } from '../integrations'
+import { parseWebUrl } from '../utils/urlUtils'
+import { t } from '../i18n'
 import type Fuse from 'fuse.js'
 import { Platform, Plugin, View, WorkspaceLeaf, type App } from 'obsidian'
 import type HomeTab from '../main'
@@ -21,29 +24,6 @@ interface WebBrowserViewState{
 	url: string
 	active?: boolean
 }
-interface SurfingJSONstoreObj{
-    bookmarks: SurfingBookmark[]
-    categories: SurfingCategory[]
-}
-
-interface SurfingCategory{
-    value: string
-    text: string
-    label: string
-    children: []
-}
-
-interface SurfingBookmark{
-    id: number
-    name: string
-    url: string
-    description: string
-    category: string[]
-    tags: string
-    create: number
-    modified: number
-}
-
 export interface SurfingItem{
     type: 'bookmark' | 'history' | 'open' | 'newUrl'
     name: string
@@ -58,35 +38,33 @@ export default class SurfingSuggester extends TextInputSuggester<Fuse.FuseResult
 
     private fuzzySearch: SurfingItemFuzzySearch
 
-    private view: View
     private plugin: HomeTab
     private searchBar: HomeTabSearchBar
 
-    constructor(app: App, plugin: HomeTab, view: View, searchBar: HomeTabSearchBar) {
+    constructor(app: App, plugin: HomeTab, searchBar: HomeTabSearchBar) {
         super(app, get(searchBar.searchBarEl), get(searchBar.suggestionContainerEl), {
-                // @ts-ignore
-                containerClass: `home-tab-suggestion-container ${Platform.isPhone ? 'is-phone' : ''}`,
+                                containerClass: `advanced-new-tab-suggestion-container ${Platform.isPhone ? 'is-phone' : ''}`,
                 additionalClasses: `${plugin.settings.selectionHighlight === 'accentColor' ? 'use-accent-color' : ''}`,
                 additionalModalInfo: plugin.settings.showShortcuts ? generateHotkeySuggestion([
-                    {hotkey: '↑↓', action: 'to navigate'},
-                    {hotkey: '↵', action: 'to open'},
-                    {hotkey: 'ctrl ↵', action: 'to open in new tab'},
-                    {hotkey: 'esc', action: 'to dismiss'},], 
-                    'home-tab-hotkey-suggestions') : undefined
+                    {hotkey: '↑↓', action: t('hint.navigate')},
+                    {hotkey: '↵', action: t('hint.open')},
+                    {hotkey: 'ctrl ↵', action: t('hint.newTab')},
+                    {hotkey: 'esc', action: t('hint.dismiss')},],
+                    'advanced-new-tab-hotkey-suggestions') : undefined
                 }, plugin.settings.searchDelay)
 
         this.plugin = plugin
-        this.view = view
         this.searchBar = searchBar
-        
-        this.surfingPlugin = this.app.plugins.getPlugin('surfing') as SurfingPlugin
 
-        this.fuzzySearch = new SurfingItemFuzzySearch(this.getSurfingItems())
+        this.surfingPlugin = getCommunityPlugin(this.app, 'surfing') as unknown as SurfingPlugin
+
+        this.fuzzySearch = new SurfingItemFuzzySearch([])
 
         // Open url in new tab
         this.scope.register(['Mod'], 'Enter', (e) => {
             e.preventDefault()
-            this.useSelectedItem(this.suggester.getSelectedItem(), true)
+            const item = this.suggester.getSelectedItem()
+            if (item) this.useSelectedItem(item, true)
         })
     }
 
@@ -95,7 +73,7 @@ export default class SurfingSuggester extends TextInputSuggester<Fuse.FuseResult
     }
 
     onOpen(): void {
-        this.updateSearchBarContainerEl(this.suggester.getSuggestions().length > 0 ? true : false)    
+        this.updateSearchBarContainerEl(this.suggester.getSuggestions().length > 0 ? true : false)
     }
 
     onClose(): void {
@@ -104,7 +82,7 @@ export default class SurfingSuggester extends TextInputSuggester<Fuse.FuseResult
 
     onNoSuggestion(): void {
         const input = this.inputEl.value
-        if (!!input){
+        if (input){
             this.suggester.setSuggestions([{
                 item: {
                     type: 'newUrl',
@@ -120,16 +98,19 @@ export default class SurfingSuggester extends TextInputSuggester<Fuse.FuseResult
             this.close()
         }
     }
-    
+
     async getSuggestions(input: string): Promise<Fuse.FuseResult<SurfingItem>[]> {
         return this.fuzzySearch.rawSearch(input, this.plugin.settings.maxResults)
     }
 
-    async useSelectedItem(selectedItem: Fuse.FuseResult<SurfingItem>, newTab?: boolean): Promise<void> {
-        const leaf = this.app.workspace.getMostRecentLeaf()
-        if(leaf){
-            await this.patchLeaf(leaf, selectedItem.item.url)
-        }
+    useSelectedItem(selectedItem: Fuse.FuseResult<SurfingItem>, newTab?: boolean): void {
+        if (!selectedItem) return
+        const input = selectedItem.item.url
+        const url = parseWebUrl(input)
+        if (url) { this.close(); this.searchBar.openUrl(url, newTab); return }
+        if (/^[a-z][a-z\d+.-]*:/i.test(input) && !parseWebUrl(input)) return
+        const leaf = newTab ? this.app.workspace.getLeaf('tab') : this.app.workspace.getMostRecentLeaf()
+        if (leaf) void this.patchLeaf(leaf, input).catch(error => console.error('[advanced-new-tab] Surfing failed', error))
     }
 
     private async patchLeaf(leaf: WorkspaceLeaf, url: string): Promise<SurfingView>{
@@ -146,12 +127,12 @@ export default class SurfingSuggester extends TextInputSuggester<Fuse.FuseResult
         return leaf.view as SurfingView
     }
 
-    
+
     getDisplayElementProps(suggestion: Fuse.FuseResult<SurfingItem>): {info: string}{
         let info: string = ''
 
         if(suggestion.item.type === 'newUrl'){
-            info = `Search with ${this.surfingPlugin.settings.defaultSearchEngine}`
+            info = t('search.webEngine', { engine: this.surfingPlugin?.settings?.defaultSearchEngine || 'Surfing' })
         }
 
         return {info: info}
@@ -161,31 +142,4 @@ export default class SurfingSuggester extends TextInputSuggester<Fuse.FuseResult
         return SurfingSuggestion
     }
 
-    private getSurfingItems(): SurfingItem[]{
-        const items: SurfingItem[] = []
-
-        return items
-    }
-
-    // TODO
-    private getHistory(): SurfingItem[]{
-        return []
-    }
-    private getOpenitems(): SurfingItem[]{
-        return []
-    }
-    private async getBookmarks(): Promise<SurfingJSONstoreObj>{
-        return JSON.parse(await this.app.vault.adapter.read(`${this.app.vault.configDir}/${this.surfingJSONfile}`))
-    }
-    private async getBookmarkedItems(): Promise<SurfingItem[]>{
-        const items: SurfingItem[] = []
-        ;(await this.getBookmarks()).bookmarks.forEach(bookmark => items.push({
-            type: 'bookmark',
-            name: bookmark.name,
-            url: bookmark.url,
-            description: bookmark.description
-        }))
-
-        return items
-    }
 }

@@ -1,39 +1,28 @@
-import { PopoverTextInputSuggester,  type suggesterViewOptions } from "./suggester"
-import type Fuse from 'fuse.js'
-import type { App, } from 'obsidian'
-import { ArrayFuzzySearch } from "./fuzzySearch"
-import { lucideIcons } from "../utils/lucideIcons"
-import IconSuggestion from "src/ui/svelteComponents/iconSuggestion.svelte"
+import { AbstractInputSuggest, getIconIds, setIcon, type App } from 'obsidian'
 
+export default class IconSuggester extends AbstractInputSuggest<string> {
+    private readonly input: HTMLInputElement
 
-export default class iconSuggester extends PopoverTextInputSuggester<Fuse.FuseResult<string>>{
-    private iconList: string[]
-    private fuzzySearch: ArrayFuzzySearch
-    private displayIcon: boolean
-
-    constructor(app: App, inputEl: HTMLInputElement, viewOptions?: suggesterViewOptions, displayIcon?: boolean){
-        super(app, inputEl, viewOptions)
-        this.iconList = [... lucideIcons]
-        this.fuzzySearch = new ArrayFuzzySearch(this.iconList)
-        this.displayIcon = displayIcon ?? false
+    constructor(app: App, input: HTMLInputElement) {
+        super(app, input)
+        this.input = input
+        this.limit = 20
     }
 
-    getSuggestions(input: string): Fuse.FuseResult<string>[] {
-        return this.fuzzySearch.filteredSearch(input, 0.25, 15)
+    getSuggestions(query: string): string[] {
+        const term = query.trim().toLowerCase()
+        return getIconIds().filter(id => id.includes(term)).slice(0, this.limit)
     }
 
-    useSelectedItem(selectedItem: Fuse.FuseResult<string>): void {
-        this.inputEl.value = selectedItem.item
-        this.inputEl.trigger("input")
-        this.onInput().then(() => this.close())
+    renderSuggestion(id: string, el: HTMLElement): void {
+        setIcon(el.createSpan({ cls: 'advanced-new-tab-icon' }), id)
+        el.createSpan({ text: id })
     }
 
-    getDisplayElementComponentType(): typeof IconSuggestion{
-        return IconSuggestion
-    }
-    getDisplayElementProps(): {displayIcon: boolean}{
-        return {
-            displayIcon: this.displayIcon
-        }
+    selectSuggestion(id: string): void {
+        this.setValue(id)
+        const InputEvent = this.input.ownerDocument.defaultView?.Event
+        if (InputEvent) this.input.dispatchEvent(new InputEvent('input', { bubbles: true }))
+        this.close()
     }
 }

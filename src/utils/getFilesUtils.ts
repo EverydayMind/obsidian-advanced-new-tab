@@ -14,10 +14,10 @@ export function getImageFiles(app: App){
 
 export function getFileAliases(app: App, file: TFile): string[]{
     let aliases: string[] = []
-    const rawAliases: string[] | string | undefined = app.metadataCache.getFileCache(file)?.frontmatter ? app.metadataCache.getFileCache(file)?.frontmatter?.aliases : undefined
+    const rawAliases: unknown = app.metadataCache.getFileCache(file)?.frontmatter ? app.metadataCache.getFileCache(file)?.frontmatter?.aliases : undefined
 
     if(rawAliases instanceof Array){
-        aliases.push(...rawAliases)
+        aliases.push(...rawAliases.filter((alias): alias is string => typeof alias === 'string'))
     }
     else if(typeof rawAliases === 'string'){
         rawAliases.replace('[', '').replace(']', '').split(',').forEach((alias: string) => {
@@ -131,6 +131,6 @@ export function getSearchFiles(app: App, unresolvedLinks?: boolean): SearchFile[
 
 export function getParentFolderFromPath(filepath: string): string{
     // const regexResult = filepath.match(/.*\/([^\/]+)\//)
-    const regexResult = filepath.match(/([^\/]+)\/[^\/]+\/*$/)
+    const regexResult = filepath.match(/([^/]+)\/[^/]+\/*$/)
     return regexResult ? regexResult[1] : '/' 
 }

@@ -1,20 +1,25 @@
 <script lang="ts">
+    import { getCorePlugin } from "../integrations"
+    import { getEnabledCoreActions } from "../coreActions"
+    import { onMount } from 'svelte'
+    import Icon from "./svelteComponents/icon.svelte"
+    import { parseWebUrl } from "../utils/urlUtils"
     import SearchBar from './searchBar.svelte';
     import type { HomeTabSettings } from 'src/settings';
     import { pluginSettingsStore, recentFiles, bookmarkedFiles, templateFiles, templateStatus } from '../store'
-    import { getIcon, Platform, type TFile, View } from 'obsidian'
+    import { Platform, type TFile } from 'obsidian'
     import { i18n } from '../i18n';
     import type { EmbeddedHomeTab } from '../homeView';
-    import type HomeTabSearchBar from 'src/homeTabSearchbar';
+    import type SearchBarController from 'src/homeTabSearchbar';
 	import type { recentFile } from 'src/recentFiles';
 	import BookmarkedFiles from './bookmarkedFiles.svelte';
 	import RecentFiles from './recentFiles.svelte';
 	import type { bookmarkedFile } from 'src/bookmarkedFiles';
 	import type HomeTab from 'src/main';
+    import { sectionOrder } from "../utils/sectionUtils"
     import Templates from './templates.svelte';
     
-    export let view: View
-    export let HomeTabSearchBar: HomeTabSearchBar
+    export let HomeTabSearchBar: SearchBarController
     export let plugin: HomeTab
     export let embeddedView: EmbeddedHomeTab | undefined = undefined
 
@@ -28,17 +33,29 @@
     $: bookmarkedFileList = pluginSettings?.showbookmarkedFiles ? $bookmarkedFiles ?? [] : []
     $: recentFileList = pluginSettings?.showRecentFiles ? $recentFiles ?? [] : []
     $: templatesList = pluginSettings?.showTemplates ? $templateFiles ?? [] : []
+    $: sections = sectionOrder(pluginSettings.sectionOrder)
     $: currentTemplateStatus = pluginSettings?.showTemplates ? $templateStatus ?? '' : ''
 
     const vaultAdapter = plugin.app.vault.adapter
     const gradientUniqueId = Math.floor(Math.random()*10e6)
     // const gradientUniqueId = view.leaf.activeTime
-    const isbookmarkedPluginEnabled = plugin.app.internalPlugins.getPluginById('bookmarks') ? true : false
+    let isbookmarkedPluginEnabled = !!getCorePlugin(plugin.app, 'bookmarks')
 
     let renderRecentFiles = false
     let renderbookmarkedFiles = false
     let renderTemplates = false
-    const isDailyNotesPluginEnabled = plugin.app.internalPlugins.getPluginById('daily-notes') ? true : false
+    let isDailyNotesPluginEnabled = !!getCorePlugin(plugin.app, 'daily-notes')
+    let coreActions = getEnabledCoreActions(plugin.app)
+
+    onMount(() => {
+        const workspace = plugin.app.workspace
+        const ref = workspace?.on('layout-change', () => {
+            isbookmarkedPluginEnabled = !!getCorePlugin(plugin.app, 'bookmarks')
+            isDailyNotesPluginEnabled = !!getCorePlugin(plugin.app, 'daily-notes')
+            coreActions = getEnabledCoreActions(plugin.app)
+        })
+        return () => { if (ref) workspace.offref(ref) }
+    })
 
     $: renderRecentFiles = embeddedView ? !!embeddedView.recentFiles : !!pluginSettings?.showRecentFiles
     $: renderbookmarkedFiles = embeddedView ? !!embeddedView.bookmarkedFiles : !!pluginSettings?.showbookmarkedFiles
@@ -49,15 +66,15 @@
     }
 
     function handleCreateNewNote(): void {
-        plugin.createNewNote()
+        void plugin.createNewNote()
     }
 </script>
   
-<main class="home-tab" class:embedded={embeddedView}>
+<main class="advanced-new-tab" class:embedded={embeddedView}>
     {#if !embeddedView?.searchbarOnly}
-        <div class="home-tab-wordmark-container">
+        <div class="advanced-new-tab-wordmark-container">
             {#if !(pluginSettings.logoType === 'none')}
-                <div class="home-tab-logo" style="margin-right: calc({pluginSettings.fontSize}/5)">
+                <div class="advanced-new-tab-logo" style="margin-right: calc({pluginSettings.fontSize}/5)">
                     {#if pluginSettings.logoType === 'default'}
                         <!-- New obsidian logo -->
                         <svg width="calc({pluginSettings.fontSize}*{pluginSettings.logoScale})" height="calc({pluginSettings.fontSize}*{pluginSettings.logoScale})" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -137,24 +154,21 @@
                         </svg>
 
                     {:else if pluginSettings.logoType === 'lucideIcon' && !!pluginSettings.logo.lucideIcon}
-                            <svg xmlns="http://www.w3.org/2000/svg"  width="calc({pluginSettings.fontSize}*{pluginSettings.logoScale})" height="calc({pluginSettings.fontSize}*{pluginSettings.logoScale})" 
-                            viewBox="0 0 24 24" fill="none" stroke="{pluginSettings.iconColorType === 'default' ? 'currentColor' : pluginSettings.iconColorType === 'accentColor' ?  'var(--interactive-accent)' : pluginSettings.iconColor}" 
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
-                            class="svg-icon lucide-{pluginSettings.logo.lucideIcon}">
-                                {@html getIcon(pluginSettings.logo.lucideIcon)?.innerHTML}
-                            </svg>
+                            <span style:color={pluginSettings.iconColorType === 'accentColor' ? 'var(--interactive-accent)' : pluginSettings.iconColorType === 'custom' ? pluginSettings.iconColor : 'currentColor'}>
+                                <Icon name={pluginSettings.logo.lucideIcon} size={`calc(${pluginSettings.fontSize} * ${pluginSettings.logoScale})`}/>
+                            </span>
                     {:else if pluginSettings.logoType === 'imagePath' && !!pluginSettings.logo.imagePath}
-                            <img src="{vaultAdapter.getResourcePath(pluginSettings.logo.imagePath)}" alt="home-tab-logo"
+                            <img src="{vaultAdapter.getResourcePath(pluginSettings.logo.imagePath)}" alt="advanced-new-tab-logo"
                                 style="max-width: calc({pluginSettings.fontSize}*{pluginSettings.logoScale});
                                         max-height: calc({pluginSettings.fontSize}*{pluginSettings.logoScale});">
-                    {:else if pluginSettings.logoType === 'imageLink' && !!pluginSettings.logo.imageLink}
-                            <img src="{pluginSettings.logo.imageLink}" alt="home-tab-logo"
+                    {:else if pluginSettings.logoType === 'imageLink' && /^https?:\/\//i.test(pluginSettings.logo.imageLink) && parseWebUrl(pluginSettings.logo.imageLink)}
+                            <img src="{pluginSettings.logo.imageLink}" alt="advanced-new-tab-logo"
                                 style="max-width: calc({pluginSettings.fontSize}*{pluginSettings.logoScale});
                                     max-height: calc({pluginSettings.fontSize}*{pluginSettings.logoScale});">
                     {/if}
                 </div>
             {/if}
-            <div class=home-tab-wordmark>
+            <div class=advanced-new-tab-wordmark>
                 <h1 style="font-family: {pluginSettings.customFont === 'interfaceFont' ? 'var(--interface-font)' : pluginSettings.customFont === 'textFont' ? 'var(--font-text)' : pluginSettings.customFont === 'monospaceFont' ? 'var(--font-monospace)' : pluginSettings.font};
                             font-size: {pluginSettings.fontSize};
                             font-weight: {pluginSettings.fontWeight.toString()};
@@ -168,33 +182,43 @@
     <SearchBar {HomeTabSearchBar} embedded={embeddedView ? true : false}/>
 
     {#if !embeddedView && pluginSettings.showQuickActions}
-        <div class="home-tab-daily-note-container">
+        <div class="advanced-new-tab-daily-note-container">
             {#if isDailyNotesPluginEnabled}
-                <button class="home-tab-action-button" on:click={handleOpenTodayDailyNote}>
+                <button class="advanced-new-tab-action-button" on:click={handleOpenTodayDailyNote}>
                     {$i18n('action.dailyNote')}
                 </button>
             {/if}
-            <button class="home-tab-action-button" on:click={handleCreateNewNote}>
+            <button class="advanced-new-tab-action-button" on:click={handleCreateNewNote}>
                 {$i18n('action.newNote')}
             </button>
+            {#each coreActions as action (action.pluginId)}
+                <button class="advanced-new-tab-action-button" on:click={event => plugin.runCoreAction(action.pluginId, event)}>
+                    <Icon name={action.icon} size={16}/>
+                    {$i18n(action.label)}
+                </button>
+            {/each}
+            {#each pluginSettings.quickActions as action, index}
+                <button class="advanced-new-tab-action-button" disabled={!action.target} on:click={() => void plugin.runQuickAction(action)}>
+                    {#if action.icon}<Icon name={action.icon} size={16}/>{/if}
+                    {action.label || action.target || $i18n('actions.number', { number: index + 1 })}
+                </button>
+            {/each}
         </div>
     {/if}
 
-    {#if isbookmarkedPluginEnabled && bookmarkedFileList && renderbookmarkedFiles}
-        <BookmarkedFiles bookmarkedFiles={bookmarkedFileList} {view} {pluginSettings} bookmarkedFileManager={plugin.bookmarkedFileManager}/>
-    {/if}
-
-    {#if plugin.recentFileManager && recentFileList.length > 0  && renderRecentFiles}
-        <RecentFiles {recentFileList} {view} {pluginSettings} recentFileManager={plugin.recentFileManager}/>
-    {/if}
-
-    {#if plugin.templateManager && renderTemplates}
-        <Templates templates={templatesList} status={currentTemplateStatus} templateManager={plugin.templateManager}/>
-    {/if}
+    {#each sections as section}
+        {#if section === 'bookmarks' && isbookmarkedPluginEnabled && renderbookmarkedFiles}
+            <BookmarkedFiles bookmarkedFiles={bookmarkedFileList} app={plugin.app} {pluginSettings} bookmarkedFileManager={plugin.bookmarkedFileManager}/>
+        {:else if section === 'recent' && plugin.recentFileManager && recentFileList.length > 0 && renderRecentFiles}
+            <RecentFiles {recentFileList} app={plugin.app} {pluginSettings} recentFileManager={plugin.recentFileManager}/>
+        {:else if section === 'templates' && plugin.templateManager && renderTemplates}
+            <Templates templates={templatesList} status={currentTemplateStatus} templateManager={plugin.templateManager}/>
+        {/if}
+    {/each}
 
     {#if !embeddedView && pluginSettings.showGuide}
-        <div class="home-tab-guide-container">
-            <div class="home-tab-guide-box">
+        <div class="advanced-new-tab-guide-container">
+            <div class="advanced-new-tab-guide-box">
                 {$i18n('guide.palette', { hotkey: Platform.isMacOS ? '⌘P' : 'Ctrl+P' })}
             </div>
         </div>
@@ -202,29 +226,30 @@
 </main>
   
 <style>
-    .home-tab-logo svg{
+    .advanced-new-tab-logo svg{
         height: unset;
         width: unset;
     }
-    .home-tab-wordmark-container{
+    .advanced-new-tab-wordmark-container{
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 50px;
     }
-    .home-tab:not(.embedded) .home-tab-wordmark-container{
+    .advanced-new-tab:not(.embedded) .advanced-new-tab-wordmark-container{
         padding-top: 100px;
     }
-    .home-tab-wordmark h1{
+    .advanced-new-tab-wordmark h1{
         margin: unset;
     }
-    .home-tab-daily-note-container{
+    .advanced-new-tab-daily-note-container{
         display: flex;
         justify-content: center;
+        flex-wrap: wrap;
         gap: 8px;
         margin-top: 16px;
     }
-    .home-tab-action-button{
+    .advanced-new-tab-action-button{
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         border-radius: var(--radius-m);
@@ -232,17 +257,17 @@
         cursor: pointer;
         font-size: var(--font-ui-medium);
     }
-    .home-tab-action-button:hover{
+    .advanced-new-tab-action-button:hover{
         background: var(--background-modifier-hover);
     }
-    .home-tab-guide-container{
+    .advanced-new-tab-guide-container{
         display: flex;
         justify-content: center;
         margin: 28px auto 0;
         width: 65%;
         max-width: 900px;
     }
-    .home-tab-guide-box{
+    .advanced-new-tab-guide-box{
         width: 100%;
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
@@ -255,20 +280,20 @@
     }
 
     @media(max-width: 600px){
-        .home-tab-wordmark-container{
+        .advanced-new-tab-wordmark-container{
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
-        .home-tab-wordmark{
+        .advanced-new-tab-wordmark{
             text-align: center;
         }
-        .home-tab-guide-container{
+        .advanced-new-tab-guide-container{
             width: 90%;
         }
     }
     @media(max-height: 1000px){
-        .home-tab:not(.embedded) .home-tab-wordmark-container{
+        .advanced-new-tab:not(.embedded) .advanced-new-tab-wordmark-container{
             padding-top: 10px;
         }
     }

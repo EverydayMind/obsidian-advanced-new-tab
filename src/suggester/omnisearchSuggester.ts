@@ -1,11 +1,14 @@
-import { Platform, TFile, View, type App } from 'obsidian'
+import { getOmnisearchApi } from '../integrations'
+import { parseWebUrl } from '../utils/urlUtils'
+import { t } from '../i18n'
+import { Platform, TFile, type App } from 'obsidian'
 import type HomeTab from '../main'
 import type HomeTabSearchBar from "src/homeTabSearchbar"
 import { TextInputSuggester } from './suggester'
 import { generateHotkeySuggestion } from 'src/utils/htmlUtils'
 import { get } from 'svelte/store'
 import OmnisearchSuggestion from 'src/ui/svelteComponents/omnisearchSuggestion.svelte'
-import { concatenateStringsToRegex, escapeStringForRegExp } from 'src/utils/regexUtils'
+import { highlightText, type HighlightPart } from '../utils/highlightUtils'
 
 export type OmnisearchApi = {
     // Returns a promise that will contain the same results as the Vault modal
@@ -18,6 +21,7 @@ export type OmnisearchApi = {
     unregisterOnIndexed: (callback: () => void) => void,
   }
 export type ResultNoteApi = {
+    url?: string
     score: number
     path: string
     excerpt: string
@@ -34,35 +38,32 @@ export default class OmnisearchSuggester extends TextInputSuggester<ResultNoteAp
     // private files: SearchFile[]
     private omnisearch: OmnisearchApi
 
-    private view: View
     private plugin: HomeTab
     private searchBar: HomeTabSearchBar
 
-    constructor(app: App, plugin: HomeTab, view: View, searchBar: HomeTabSearchBar) {
+    constructor(app: App, plugin: HomeTab, searchBar: HomeTabSearchBar) {
         super(app, get(searchBar.searchBarEl), get(searchBar.suggestionContainerEl), {
-                // @ts-ignore
-                containerClass: `home-tab-suggestion-container ${Platform.isPhone ? 'is-phone' : ''}`,
+                                containerClass: `advanced-new-tab-suggestion-container ${Platform.isPhone ? 'is-phone' : ''}`,
                 // suggestionItemClass: 'suggestion-item omnisearch-result',
                 additionalClasses: `${plugin.settings.selectionHighlight === 'accentColor' ? 'use-accent-color' : ''}`,
                 additionalModalInfo: plugin.settings.showShortcuts ? generateHotkeySuggestion([
-                    {hotkey: '↑↓', action: 'to navigate'},
-                    {hotkey: '↵', action: 'to open'},
-                    // {hotkey: 'shift ↵', action: 'to create'},
-                    {hotkey: 'ctrl ↵', action: 'to open in new tab'},
-                    {hotkey: 'esc', action: 'to dismiss'},], 
-                    'home-tab-hotkey-suggestions') : undefined
+                    {hotkey: '↑↓', action: t('hint.navigate')},
+                    {hotkey: '↵', action: t('hint.open')},
+                    // {hotkey: 'shift ↵', action: t('hint.create')},
+                    {hotkey: 'ctrl ↵', action: t('hint.newTab')},
+                    {hotkey: 'esc', action: t('hint.dismiss')},],
+                    'advanced-new-tab-hotkey-suggestions') : undefined
                 }, plugin.settings.searchDelay)
         this.plugin = plugin
-        this.view = view
         this.searchBar = searchBar
-        
-        // @ts-ignore
-        this.omnisearch = omnisearch
+
+        this.omnisearch = getOmnisearchApi(app, this.inputEl.ownerDocument.defaultView)
 
         // Open file in new tab
         this.scope.register(['Mod'], 'Enter', (e) => {
             e.preventDefault()
-            this.useSelectedItem(this.suggester.getSelectedItem(), true)
+            const item = this.suggester.getSelectedItem()
+            if (item) this.useSelectedItem(item, true)
         })
     }
 
@@ -71,7 +72,7 @@ export default class OmnisearchSuggester extends TextInputSuggester<ResultNoteAp
     }
 
     onOpen(): void {
-        this.updateSearchBarContainerEl(this.suggester.getSuggestions().length > 0 ? true : false)    
+        this.updateSearchBarContainerEl(this.suggester.getSuggestions().length > 0 ? true : false)
     }
 
     onClose(): void {
@@ -85,44 +86,37 @@ export default class OmnisearchSuggester extends TextInputSuggester<ResultNoteAp
     //         this.close()
     //     }
     // }
-    
+
     async getSuggestions(input: string): Promise<ResultNoteApi[]> {
-        const suggestions = (await this.omnisearch.search(input)).splice(0, this.plugin.settings.maxResults)
+        const url = parseWebUrl(input)
+        if (url) return [{ url, score: 0, path: url, basename: t('action.openLink', { url }), excerpt: '', foundWords: [], matches: [] }]
+        const suggestions = (await this.omnisearch?.search(input) ?? []).splice(0, this.plugin.settings.maxResults)
         return suggestions
     }
 
     useSelectedItem(selectedItem: ResultNoteApi, newTab?: boolean): void {
+        if (!selectedItem) return
+        if (selectedItem.url) { this.close(); this.searchBar.openUrl(selectedItem.url, newTab); return }
         const file = this.app.vault.getAbstractFileByPath(selectedItem.path)
         if(file && file instanceof TFile){
             this.openFile(file, newTab)
         }
     }
 
-    
-    getDisplayElementProps(suggestion: ResultNoteApi): {basename: string, excerpt: string}{
-        const escapedWords = suggestion.foundWords.map(word => escapeStringForRegExp(word))
-        const regex = concatenateStringsToRegex(escapedWords, 'gi')
-        
-        let content = this.plugin.settings.showOmnisearchExcerpt ? this.highlightMatches(suggestion.excerpt, regex) : ''
-        let basename = this.highlightMatches(suggestion.basename, regex)
-        
-        return {basename: basename, excerpt: content}
+
+    getDisplayElementProps(suggestion: ResultNoteApi): {basename: HighlightPart[], excerpt: HighlightPart[]} {
+        return {
+            basename: highlightText(suggestion.basename, suggestion.foundWords),
+            excerpt: highlightText(this.plugin.settings.showOmnisearchExcerpt ? suggestion.excerpt : '', suggestion.foundWords),
+        }
     }
 
     getDisplayElementComponentType(): typeof OmnisearchSuggestion{
         return OmnisearchSuggestion
     }
 
-    openFile(file: TFile, newTab?: boolean): void{
-        if(newTab){
-            this.app.workspace.createLeafInTabGroup().openFile(file)
-        }
-        else{
-            this.view.leaf.openFile(file);
-        }
+    openFile(file: TFile, newTab?: boolean): void {
+        this.searchBar.openFile(file, newTab)
     }
 
-    private highlightMatches(content: string, regexMatches: RegExp): string{
-        return content.replaceAll(regexMatches, (value) => `<span class="suggestion-highlight omnisearch-highlight omnisearch-default-highlight">${value}</span>`)
-    }
 }

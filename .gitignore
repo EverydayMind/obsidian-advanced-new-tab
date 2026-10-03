@@ -26,3 +26,5 @@ CLAUDE.md
 docs/
 *PLAN*.md
 *REVIEW*.md
+
+.lint-results.json

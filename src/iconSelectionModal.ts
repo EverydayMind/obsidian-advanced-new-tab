@@ -1,84 +1,39 @@
-import { App, Modal, Setting } from 'obsidian'
-import iconSuggester from './suggester/iconSuggester'
-import { lucideIcons, type LucideIcon } from './utils/lucideIcons'
+import { Modal, Setting, getIconIds, type App } from 'obsidian'
+import IconSuggester from './suggester/iconSuggester'
+import type { LucideIcon } from './utils/lucideIcons'
+import { t } from './i18n'
 
-export class IconSelectionModal extends Modal{
-    icon: string | undefined
-    onSubmit: (icon: LucideIcon) => void
+export class IconSelectionModal extends Modal {
+    private icon: string
+    private suggester?: IconSuggester
 
-    constructor(app: App, defaultIcon: LucideIcon | undefined, onSubmit: (icon: LucideIcon) => void){
+    constructor(app: App, defaultIcon: LucideIcon | undefined, private onSubmit: (icon: LucideIcon) => void) {
         super(app)
-
-        this.icon = defaultIcon
-        this.onSubmit = onSubmit
+        this.icon = defaultIcon ?? ''
     }
 
-    onOpen(): void{
-        const { contentEl } = this
-
-        contentEl.createEl('h1', {text: 'Set a custom icon'})
-
-        const iconSetting = new Setting(contentEl)
-            .setName('Choose an icon')
-            .setDesc('Accepts any lucide icon id.')
-
-        let invalidInputIcon: HTMLElement
-        iconSetting
-            .addExtraButton((button) => {button
-                .setIcon('alert-circle')
-                .setTooltip('The icon id is not valid.')
-                invalidInputIcon = button.extraSettingsEl
-                invalidInputIcon.toggleVisibility(false)
-                invalidInputIcon.addClass('mod-warning')})
-
-        iconSetting
-            .addSearch((text) => {
-                new iconSuggester(this.app, text.inputEl, {
-                    isScrollable: true,
-                    style: `max-height: 200px`}, 
-                    true)
-
-                text
-                .setPlaceholder('Type to start search...')
-                .setValue(this.icon ?? '')
-                .onChange(value => {
-                    // if(value === '' || value == '/'){
-                    //     invalidInputIcon.toggleVisibility(false)
-                    //     return
-                    // }
-                    if(lucideIcons.includes(value as LucideIcon)){
-                        this.icon = value
-                        invalidInputIcon.toggleVisibility(false)
-                    }
-                    else{
-                        invalidInputIcon.toggleVisibility(true)
-                    }
-                })
-                .inputEl.parentElement?.addClass('wide-input-container')
+    onOpen(): void {
+        this.setTitle(t('modal.iconTitle'))
+        const choice = new Setting(this.contentEl).setName(t('modal.chooseIcon')).setDesc(t('modal.iconDescription'))
+        choice.addSearch(text => {
+            text.setValue(this.icon).setPlaceholder(t('modal.search')).onChange(value => {
+                this.icon = value
+                text.inputEl.setCustomValidity(getIconIds().includes(value) ? '' : t('validation.icon'))
+            })
+            this.suggester = new IconSuggester(this.app, text.inputEl)
         })
-        
-
-        new Setting(contentEl)
-            .addButton((btn) =>
-                btn
-                .setButtonText("Close modal")
-                // .setCta()
-                .onClick(() => {
-                    this.close();
-                }))
-            .addButton((btn) =>
-                btn
-                .setButtonText("Set icon")
-                .setCta()
-                .onClick(() => {
-                    this.icon ? this.onSubmit(this.icon as LucideIcon) : null
-                    this.close()
-                }))
+        new Setting(this.contentEl)
+            .addButton(button => button.setButtonText(t('modal.close')).onClick(() => this.close()))
+            .addButton(button => button.setButtonText(t('modal.setIcon')).setCta().onClick(() => {
+                if (!getIconIds().includes(this.icon)) return
+                this.onSubmit(this.icon)
+                this.close()
+            }))
     }
 
     onClose(): void {
-        this.icon = undefined
-        let { contentEl } = this;
-        contentEl.empty();
+        this.suggester?.close()
+        this.suggester = undefined
+        this.contentEl.empty()
     }
 }

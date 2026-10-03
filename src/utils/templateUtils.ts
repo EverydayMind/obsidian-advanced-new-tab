@@ -3,7 +3,7 @@ import type { Moment } from 'moment'
 export const DEFAULT_NOTE_NAME_FORMAT = '{{template}} 이름 ({{date:YYMMDD HHmm}})'
 
 export function sanitizeNoteName(name: string): string {
-    return name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').replace(/[. ]+$/g, '').trim() || '노트'
+    return Array.from(name, char => char.charCodeAt(0) < 32 ? '-' : char).join('').replace(/[\\/:*?"<>|]/g, '-').replace(/[. ]+$/g, '').trim() || '노트'
 }
 
 export function renderTemplateContent(content: string, title: string, now: Moment, dateFormat = 'YYYY-MM-DD', timeFormat = 'HH:mm'): string {

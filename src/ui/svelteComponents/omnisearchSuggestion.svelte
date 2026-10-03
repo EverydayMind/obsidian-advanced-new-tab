@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { File, FolderOpen } from "lucide-svelte";
+	import Icon from './icon.svelte'
+    import HighlightedText from './highlightedText.svelte'
+    import type { HighlightPart } from 'src/utils/highlightUtils'
+    import { i18n } from 'src/i18n'
 	import type { ResultNoteApi } from "src/suggester/omnisearchSuggester";
 	import type { TextInputSuggester } from "src/suggester/suggester";
 	import { getExtensionFromFilename } from "src/utils/getFileTypeUtils";
@@ -11,9 +14,9 @@
 
     export let suggestion: ResultNoteApi
 
-    export let basename: string
-    export let excerpt: string
-    
+    export let basename: HighlightPart[]
+    export let excerpt: HighlightPart[]
+
     let fileExtension = getExtensionFromFilename(suggestion.path)
     let folderPath = suggestion.path.replace(`${suggestion.basename}.${fileExtension}`, '').slice(0, -1)
 </script>
@@ -25,27 +28,27 @@
     <svelte:fragment slot="suggestion-title">
         <span class="omnisearch-result__title">
             <span>
-                <File size={15}/>
+                <Icon name={suggestion.url ? 'globe' : 'file'} size={15}/>
             </span>
             <!-- <span>{suggestion.basename}</span> -->
-            <span>{@html basename}</span>
-            <span class="omnisearch-result__extension">{`.${fileExtension}`}</span>
+            <span><HighlightedText parts={basename}/></span>
+            {#if !suggestion.url}<span class="omnisearch-result__extension">{`.${fileExtension}`}</span>{/if}
             {#if suggestion.matches.length > 0}
-                <span class="omnisearch-result__counter">{`${suggestion.matches.length} match${suggestion.matches.length > 1 ? 'es' : ''}`}</span>
+                <span class="omnisearch-result__counter">{$i18n(suggestion.matches.length === 1 ? 'search.match' : 'search.matches', { count: suggestion.matches.length })}</span>
             {/if}
         </span>
     </svelte:fragment>
     <svelte:fragment slot="suggestion-extra-content">
         <!-- File path -->
-        {#if folderPath.length > 0}
+        {#if !suggestion.url && folderPath.length > 0}
             <div class="omnisearch-result__folder-path">
-                <FolderOpen size={15}/>
+                <Icon name="folder-open" size={15}/>
                 <span>{folderPath}</span>
             </div>
         {/if}
         <!-- File content -->
         <div class="omnisearch-result__body">
-            {@html excerpt}
+            <HighlightedText parts={excerpt}/>
         </div>
     </svelte:fragment>
 </Suggestion>

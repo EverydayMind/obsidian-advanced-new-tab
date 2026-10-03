@@ -1,5 +1,5 @@
-import { MarkdownView, Notice, Plugin, WorkspaceLeaf, normalizePath } from 'obsidian';
-import { EmbeddedHomeTab, HomeTabView, VIEW_TYPE } from 'src/homeView';
+import { Notice, Plugin, WorkspaceLeaf, normalizePath } from 'obsidian';
+import { EmbeddedHomeTab, HomeTabView, VIEW_TYPE, CODE_BLOCK_TYPE } from 'src/homeView';
 import { HomeTabSettingTab, DEFAULT_SETTINGS, type HomeTabSettings } from './settings'
 import { pluginSettingsStore, bookmarkedFiles, templateFiles, templateStatus } from './store'
 import { RecentFileManager } from './recentFiles';
@@ -9,63 +9,17 @@ import './styles.css';
 import { mergeSettings } from './utils/settingsUtils';
 import { sanitizeNoteName } from './utils/templateUtils';
 import { initI18n, t } from './i18n';
-
-declare module 'obsidian'{
-	interface App{
-		internalPlugins: InternalPlugins
-		plugins: Plugins
-		commands: {
-			executeCommandById: (id: string) => boolean
-		}
-		dom: any
-		isMobile: boolean
-	}
-	interface InternalPlugins{
-		getPluginById: Function
-		plugins: {
-			bookmarks: BookmarksPlugin
-		}
-	}
-	interface Plugins{
-		getPlugin: (id: string) => Plugin_2
-	}
-	interface BookmarksPlugin extends Plugin_2{
-		instance: {
-			items: BookmarkItem[]
-			getBookmarks: () => BookmarkItem[]
-			removeItem: (item: BookmarkItem) => void
-		}
-	}
-	interface BookmarkItem{
-		type: string,
-		title: string | undefined,
-		path: string
-	}
-	interface config{
-		nativeMenus: boolean
-	}
-	interface Vault{
-		config: config
-	}
-	interface Workspace{
-		createLeafInTabGroup: Function
-	}
-	interface WorkspaceLeaf{
-		rebuildView: Function
-		activeTime: number
-		app: App
-	}
-	interface TFile{
-		deleted: boolean
-	}
-}
+import { getCorePlugin, getCommunityPlugin, executeAppCommand, isRecord } from './integrations'
+import type { QuickAction } from './settingsData'
+import { openInWebViewer } from './webViewer'
+import { executeCoreAction, type CoreActionId } from './coreActions'
 
 export default class HomeTab extends Plugin {
 	settings: HomeTabSettings;
 	recentFileManager: RecentFileManager
 	bookmarkedFileManager: bookmarkedFilesManager
 	templateManager: TemplateManager
-	activeEmbeddedHomeTabViews: EmbeddedHomeTab[]
+	private embeddedCleanups = new Set<() => void>()
 	private ribbonEl: HTMLElement
 	
 	async onload() {
@@ -83,7 +37,6 @@ export default class HomeTab extends Plugin {
 
 		pluginSettingsStore.set(this.settings) // Store the settings for the svelte components
 
-		this.activeEmbeddedHomeTabViews = []
 
 		this.recentFileManager = this.addChild(new RecentFileManager(this.app, this))
 
@@ -97,32 +50,42 @@ export default class HomeTab extends Plugin {
 			id: 'open-home-tab',
 			name: t('command.replace'),
 			callback: () => this.activateView(true)})
-		this.addCommand({
-			id: 'open-today-daily-note',
-			name: "Open today's daily note",
+        this.addCommand({
+            id: 'focus-search', name: t('command.focus'),
+            checkCallback: checking => {
+                const leaf = this.app.workspace.getMostRecentLeaf()
+                if (!(leaf?.view instanceof HomeTabView)) return false
+                if (!checking) leaf.view.searchBar.focusSearchbar()
+                return true
+            },
+        })
+        this.addCommand({
+            id: 'open-today-daily-note',
+			name: t('action.dailyNote'),
 			callback: () => this.openTodayDailyNote()})
 
 		// Wait for all plugins to load before check if the bookmarked plugin is enabled
 		this.app.workspace.onLayoutReady(() => {
-			const bookmarksPlugin = this.app.internalPlugins.getPluginById('bookmarks')
+            if (!getCommunityPlugin(this.app, 'home-tab') && !getCommunityPlugin(this.app, 'harbor-tab')) {
+                for (const leaf of this.app.workspace.getLeavesOfType('home-tab-view')) {
+                    void leaf.setViewState({ ...leaf.getViewState(), type: VIEW_TYPE })
+                }
+            }
+            const bookmarksPlugin = getCorePlugin(this.app, 'bookmarks')
 			if(bookmarksPlugin && bookmarksPlugin.enabled !== false){
 				this.bookmarkedFileManager = this.addChild(new bookmarkedFilesManager(this.app, this, bookmarkedFiles))
 			}
 
-			this.registerMarkdownCodeBlockProcessor('search-bar', (source, el, ctx) => {
-				const view = this.app.workspace.getActiveViewOfType(MarkdownView)
-				if(view){
-					let embeddedHomeTab = new EmbeddedHomeTab(el, view, this, source)
-					this.activeEmbeddedHomeTabViews.push(embeddedHomeTab)
-					ctx.addChild(embeddedHomeTab)
-				}
-			})
+            this.registerMarkdownCodeBlockProcessor(CODE_BLOCK_TYPE, (source, el, ctx) => {
+                const embedded = new EmbeddedHomeTab(el, this, source, ctx.sourcePath)
+                ctx.addChild(embedded)
+            })
 
 			if(this.settings.newTabOnStart){
 				// If an Advanced New Tab leaf is already open focus it
 				const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
 				if(leaves.length > 0){
-					this.app.workspace.revealLeaf(leaves[0])
+					void this.app.workspace.revealLeaf(leaves[0])
 					// If more than one home tab leaf is open close them
 					leaves.forEach((leaf, index) => {
 						if(index < 1) return
@@ -149,21 +112,28 @@ export default class HomeTab extends Plugin {
 	}
 
 	onunload(): void {
-		this.activeEmbeddedHomeTabViews.slice().forEach(view => view.unload())
+		for (const cleanup of this.embeddedCleanups) cleanup()
+        this.embeddedCleanups.clear()
 	}
 
+    registerEmbeddedCleanup(cleanup: () => void): () => void {
+        this.embeddedCleanups.add(cleanup)
+        return () => this.embeddedCleanups.delete(cleanup)
+    }
+
 	async loadSettings(): Promise<void> {
-		const loadedSettings = await this.loadData()
+		const loaded: unknown = await this.loadData()
+        const loadedSettings = isRecord(loaded) ? loaded : undefined
 		this.settings = mergeSettings(DEFAULT_SETTINGS, loadedSettings)
 		if(loadedSettings?.showbookmarkedFiles === undefined){
-			const bookmarks = this.app.internalPlugins.getPluginById('bookmarks')
+			const bookmarks = getCorePlugin(this.app, 'bookmarks')
 			this.settings.showbookmarkedFiles = !!bookmarks && bookmarks.enabled !== false
 		}
 
 		// One-time migration for existing users: when the new templates section setting
 		// is absent, default it to enabled if the Templates core plugin is available.
 		if(loadedSettings?.showTemplates === undefined){
-			const templates = this.app.internalPlugins.getPluginById('templates')
+			const templates = getCorePlugin(this.app, 'templates')
 			this.settings.showTemplates = !!templates && templates.enabled !== false
 		}
 	}
@@ -185,30 +155,60 @@ export default class HomeTab extends Plugin {
 		const leaf = openNewTab ? this.app.workspace.getLeaf('tab') : this.app.workspace.getMostRecentLeaf()
 		// const leaf = newTab ? app.workspace.getLeaf() : app.workspace.getMostRecentLeaf()
 		if(leaf && (overrideView || leaf.getViewState().type === 'empty')){
-			leaf.setViewState({
+			void leaf.setViewState({
 				type: VIEW_TYPE,
 			})
 			// Focus newly opened tab
-			if(openNewTab){this.app.workspace.revealLeaf(leaf)}
+			if(openNewTab){void this.app.workspace.revealLeaf(leaf)}
 		}
 	}
 
 	public refreshOpenViews(): void {
-		this.app.workspace.getLeavesOfType(VIEW_TYPE).forEach((leaf) => leaf.rebuildView())
+		pluginSettingsStore.set(this.settings)
 	}
 
 	public async openTodayDailyNote(): Promise<void> {
-		const dailyNotesPlugin = this.app.internalPlugins.getPluginById('daily-notes')
+		const dailyNotesPlugin = getCorePlugin(this.app, 'daily-notes')
 		if (!dailyNotesPlugin || dailyNotesPlugin.enabled === false) {
-			new Notice('Daily Notes core plugin is not enabled.')
+			new Notice(t('notice.dailyUnavailable'))
 			return
 		}
 
-		const executed = this.app.commands.executeCommandById('daily-notes')
+		const executed = executeAppCommand(this.app, 'daily-notes')
 		if (!executed) {
-			new Notice('Unable to open today\'s daily note.')
+			new Notice(t('notice.dailyFailed'))
 		}
 	}
+
+    async runQuickAction(action: QuickAction): Promise<void> {
+        if (action.kind === 'command') {
+            if (!executeAppCommand(this.app, action.target)) new Notice(t('notice.actionUnavailable'))
+            return
+        }
+        const file = this.app.vault.getFileByPath(action.target)
+        if (!file) { new Notice(t('notice.actionUnavailable')); return }
+        await this.app.workspace.getLeaf(action.newTab ? 'tab' : false).openFile(file)
+    }
+
+    runCoreAction(id: CoreActionId, event?: Event): void {
+        try {
+            if (!executeCoreAction(this.app, id, event)) new Notice(t('notice.actionUnavailable'))
+        } catch (error) {
+            console.error('[advanced-new-tab] Core action failed', error)
+            new Notice(t('notice.actionUnavailable'))
+        }
+    }
+
+    async openWebUrl(url: string, newTab = false, currentLeaf?: WorkspaceLeaf): Promise<void> {
+        try {
+            const result = await openInWebViewer(this.app, url, newTab, currentLeaf)
+            if (result === 'unavailable') new Notice(t('notice.webViewerUnavailable'))
+            else if (result === 'invalid') new Notice(t('validation.url'))
+        } catch (error) {
+            console.error('[advanced-new-tab] Web viewer failed', error)
+            new Notice(t('notice.webViewerFailed'))
+        }
+    }
 
 	public async createNewNote(): Promise<void> {
 		try {
@@ -224,7 +224,7 @@ export default class HomeTab extends Plugin {
 			await this.app.workspace.getLeaf(false).openFile(file)
 		} catch (error) {
 			console.error('[advanced-new-tab] Unable to create a new note', error)
-			new Notice('Unable to create a new note.')
+			new Notice(t('notice.newNoteFailed'))
 		}
 	}
 }

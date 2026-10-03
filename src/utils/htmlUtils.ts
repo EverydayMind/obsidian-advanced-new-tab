@@ -1,5 +1,6 @@
-import { lucideIcons, type LucideIcon } from "./lucideIcons";
-import { getIcon, setIcon } from "obsidian";
+import type { LucideIcon } from './lucideIcons'
+import { getIconIds } from 'obsidian'
+import { getIcon } from "obsidian";
 
 interface lucideIconOptions{
     size?: number,
@@ -9,7 +10,7 @@ interface lucideIconOptions{
 }
 
 export function getLucideIcon(iconId: LucideIcon, options?: lucideIconOptions): SVGSVGElement | null {
-    if (!lucideIcons.includes(iconId)) return null
+    if (!getIconIds().includes(iconId)) return null
 
     const iconEl = getIcon(iconId)
     if(iconEl) {
@@ -17,10 +18,10 @@ export function getLucideIcon(iconId: LucideIcon, options?: lucideIconOptions): 
         iconEl.ariaLabel = options?.ariaLabel ?? ''
 
         if(size !=24 || options?.strokeWidth !=2){
-            iconEl.hasClass('svg-icon') ? iconEl.removeClass('svg-icon') : null
+            iconEl.removeClass('svg-icon')
         }
         
-        options?.class ? iconEl.addClass(options.class) : null
+        if (options?.class) iconEl.addClass(options.class)
         iconEl.setAttribute('width', size.toString())
         iconEl.setAttribute('height', size.toString())
         iconEl.setAttribute('stroke-width', (options?.strokeWidth ?? 2).toString())
@@ -45,8 +46,8 @@ export function generateHotkeySuggestion(hotkeySuggestions: hotkeySuggestion[], 
 
     hotkeySuggestions.forEach((hotkeySuggestion) => {
         const suggestionElement = hotkeySuggestionElement.createDiv('prompt-instruction')
-        suggestionElement.createEl('span', {text: hotkeySuggestion.hotkey}).addClass('prompt-instruction-command')
-        suggestionElement.createEl('span', {text: hotkeySuggestion.action})
+        suggestionElement.createSpan({text: hotkeySuggestion.hotkey}).addClass('prompt-instruction-command')
+        suggestionElement.createSpan({text: hotkeySuggestion.action})
     })
 
     return hotkeySuggestionElement        

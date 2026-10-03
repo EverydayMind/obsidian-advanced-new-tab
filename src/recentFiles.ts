@@ -28,7 +28,7 @@ export class RecentFileManager extends Component{
     
     onload(): void {
         this.registerEvent(this.app.workspace.on('file-open', async (file) => {this.updateRecentFiles(file); await this.storeRecentFiles()})) // Save file to recent files list on opening
-        this.registerEvent(this.app.vault.on('delete', async (file) => {file instanceof TFile ? this.removeRecentFile(file) : null; await this.storeRecentFiles()})) // Remove recent file if deleted
+        this.registerEvent(this.app.vault.on('delete', async (file) => {if (file instanceof TFile) this.removeRecentFile(file); await this.storeRecentFiles()})) // Remove recent file if deleted
         this.registerEvent(this.app.vault.on('rename',  (file) => file instanceof TFile ? this.onFileRename() : null)) // Update displayed name on file rename
 
         this.loadStoredRecentFiles()
@@ -64,11 +64,12 @@ export class RecentFileManager extends Component{
     
     removeRecentFile(file: TFile): void{
         recentFiles.update((filesArray) => {
-            filesArray.splice(filesArray.findIndex((recentFile) => recentFile.file == file), 1)
+            const index = filesArray.findIndex((recentFile) => recentFile.file === file)
+            if (index >= 0) filesArray.splice(index, 1)
             return filesArray
         })
 
-        this.storeRecentFiles()
+        void this.storeRecentFiles()
     }
 
     onNewMaxListLenght(newValue: number){
@@ -84,7 +85,7 @@ export class RecentFileManager extends Component{
             return filesArray
         })
         
-        this.storeRecentFiles()
+        void this.storeRecentFiles()
     }
 
     private onFileRename(): void{

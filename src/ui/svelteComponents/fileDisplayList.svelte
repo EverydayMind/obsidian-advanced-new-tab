@@ -9,18 +9,18 @@
         <div class="suggestion-icon">
 
         </div>
-        <div class="suggestion-title home-tab-suggestion-title">
+        <div class="suggestion-title advanced-new-tab-suggestion-title">
             {filename}
         </div>
-        <div class="home-tab-suggestion-description">
+        <div class="advanced-new-tab-suggestion-description">
             <div></div>
             <span>{fileDesc}</span>
         </div>
     </div>
     <div class="suggestion-aux">
-        <div class="home-tab-suggestion-filepath">
+        <div class="advanced-new-tab-suggestion-filepath">
             <div></div>
-            <span class="home-tab-file-path">{filePath}</span>
+            <span class="advanced-new-tab-file-path">{filePath}</span>
         </div>
     </div>
 </div>

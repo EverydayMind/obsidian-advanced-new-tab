@@ -1,47 +1,63 @@
-import { FileView, MarkdownRenderChild, View, WorkspaceLeaf } from "obsidian";
+import { mount, unmount, flushSync } from 'svelte'
+import { FileView, MarkdownRenderChild, WorkspaceLeaf } from "obsidian";
 import type HomeTab from "./main";
 import Homepage from './ui/homepage.svelte'
 import HomeTabSearchBar from "./homeTabSearchbar";
 
-export const VIEW_TYPE = "home-tab-view";
+export const VIEW_TYPE = "advanced-new-tab-view";
+export const CODE_BLOCK_TYPE = "advanced-new-tab";
 
 export class EmbeddedHomeTab extends MarkdownRenderChild{
     searchBar: HomeTabSearchBar
-    homepage: Homepage
+    homepage?: ReturnType<typeof mount>
     plugin: HomeTab
-    view: View
     recentFiles: boolean | undefined
     bookmarkedFiles: boolean | undefined
+    private unregisterCleanup?: () => void
     searchbarOnly: boolean | undefined
 
-    constructor(containerEl: HTMLElement, view: View, plugin: HomeTab, codeBlockContent: string){
+    constructor(containerEl: HTMLElement, plugin: HomeTab, codeBlockContent: string, sourcePath: string){
         super(containerEl)
-        this.view = view
         this.plugin = plugin
 
         this.parseCodeBlockContent(codeBlockContent)
-        this.searchBar = new HomeTabSearchBar(plugin, view)
+        this.searchBar = new HomeTabSearchBar(plugin, (file, newTab) => {
+            let target: WorkspaceLeaf | undefined
+            plugin.app.workspace.iterateAllLeaves(leaf => {
+                if (leaf.view.containerEl.contains(containerEl)) target = leaf
+            })
+            if (newTab) void plugin.app.workspace.getLeaf('tab').openFile(file)
+            else if (target) void target.openFile(file)
+            else void plugin.app.workspace.openLinkText(file.path, sourcePath, false)
+        }, sourcePath, (url, newTab) => {
+            let target: WorkspaceLeaf | undefined
+            plugin.app.workspace.iterateAllLeaves(leaf => {
+                if (leaf.view.containerEl.contains(containerEl)) target = leaf
+            })
+            void plugin.openWebUrl(url, newTab, target)
+        })
     }
 
     onload(): void{
-        this.homepage = new Homepage({
+        this.unregisterCleanup = this.plugin.registerEmbeddedCleanup(() => this.unload())
+        this.homepage = flushSync(() => mount(Homepage, {
             target: this.containerEl,
             props: {
                 plugin: this.plugin,
-                view: this.view,
                 HomeTabSearchBar: this.searchBar,
                 embeddedView: this
             }
-        })
+        }))
 
         this.searchBar.load()
     }
 
     onunload(): void {
-        const index = this.plugin.activeEmbeddedHomeTabViews.indexOf(this)
-        if (index >= 0) this.plugin.activeEmbeddedHomeTabViews.splice(index, 1)
-        this.searchBar.fileSuggester?.destroy()
-        this.homepage.$destroy()
+        this.unregisterCleanup?.()
+        this.unregisterCleanup = undefined
+        this.searchBar.destroy()
+        if (this.homepage) void unmount(this.homepage)
+        this.homepage = undefined
     }
 
     private parseCodeBlockContent(codeBlockContent: string){
@@ -68,7 +84,7 @@ export class EmbeddedHomeTab extends MarkdownRenderChild{
 
 export class HomeTabView extends FileView{
     plugin: HomeTab
-    homepage: Homepage
+    homepage?: ReturnType<typeof mount>
     searchBar: HomeTabSearchBar
     containerEl: HTMLElement
 
@@ -80,27 +96,28 @@ export class HomeTabView extends FileView{
         this.allowNoFile = true
         this.icon = 'search'
 
-        this.searchBar = new HomeTabSearchBar(this.plugin, this)
+        this.searchBar = new HomeTabSearchBar(this.plugin,
+            (file, newTab) => { void (newTab ? this.app.workspace.getLeaf('tab') : this.leaf).openFile(file) }, '',
+            (url, newTab) => { void plugin.openWebUrl(url, newTab, this.leaf) })
     }
 
     getViewType() {
         return VIEW_TYPE;
     }
-    
+
     getDisplayText(): string {
-        return 'Advanced New Tab'
+        return this.plugin.manifest.name
     }
 
     async onOpen(): Promise<void> {
         this.plugin.templateManager?.refreshTemplates()
-        this.homepage = new Homepage({
+        this.homepage = flushSync(() => mount(Homepage, {
             target: this.contentEl,
             props:{
                 plugin: this.plugin,
-                view: this,
                 HomeTabSearchBar: this.searchBar
             }
-        });
+        }));
         this.searchBar.load()
         this.searchBar.focusSearchbar()
 
@@ -109,7 +126,8 @@ export class HomeTabView extends FileView{
     }
 
     async onClose(): Promise<void>{
-        this.searchBar.fileSuggester?.destroy()
-        this.homepage.$destroy();
+        this.searchBar.destroy()
+        if (this.homepage) void unmount(this.homepage)
+        this.homepage = undefined
     }
-} 
+}
