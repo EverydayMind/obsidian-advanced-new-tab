@@ -77,4 +77,3 @@ Enable the relevant tools in **Settings → Core plugins**. Keyboard shortcuts b
 36. **Switch between writing and reading** — Press Ctrl/Cmd+E to switch between Editing and Reading view. Live Preview formats text while you edit; Source mode shows the Markdown syntax. [Official help](https://obsidian.md/help/edit-and-read).
 
 Toggle **Show beginner hints & tips** in the plugin’s settings to hide or show this area. Tips are bundled locally; opening a help link visits the official Obsidian website.
-

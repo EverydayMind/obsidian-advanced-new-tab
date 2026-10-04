@@ -56,4 +56,3 @@ export function pickBeginnerTip(): BeginnerTip {
     previousTipId = tip.id
     return tip
 }
-
