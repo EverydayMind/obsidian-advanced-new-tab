@@ -12,7 +12,7 @@ A start page for empty Obsidian tabs, with fuzzy file search, bookmarks, recent 
 
 ## Status and compatibility
 
-Installable assets are available in [GitHub Releases](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases). Community directory publication is pending. Requires Obsidian **1.13.0 or later**. The beginner tips were verified in the Windows Obsidian 1.14.4 runtime, in English and Korean, light and dark themes, and a 390 px emulated viewport. Testing on physical mobile devices and the minimum supported version remains pending.
+Available from Obsidian's community plugins as **Advanced New Tab**, with installable assets also provided in [GitHub Releases](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases). Requires Obsidian **1.13.0 or later**. The beginner tips were verified in the Windows Obsidian 1.14.4 runtime, in English and Korean, light and dark themes, and a 390 px emulated viewport. Testing on physical mobile devices and the minimum supported version remains pending.
 
 The home page, settings, menus, and notices follow the Obsidian language, with English and Korean overrides. Settings use the searchable declarative API introduced in Obsidian 1.13.
 
@@ -109,7 +109,7 @@ The view type is `advanced-new-tab-view`, the block identifier is `advanced-new-
 
 ## Installation and development
 
-Download main.js, manifest.json, and styles.css from [the latest GitHub release](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases/latest), copy them into `.obsidian/plugins/advanced-new-tab/`, and enable the plugin. Community-directory installation is pending publication.
+In Obsidian, open Settings → Community plugins → Browse, search for **Advanced New Tab**, and install and enable it. For manual installation, download main.js, manifest.json, and styles.css from [the latest GitHub release](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases/latest) and copy them into `.obsidian/plugins/advanced-new-tab/`.
 
 Use the Node version in .nvmrc:
 

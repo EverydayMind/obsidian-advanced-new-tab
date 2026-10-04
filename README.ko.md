@@ -12,7 +12,7 @@
 
 ## 현재 상태
 
-[GitHub Releases](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases)에서 설치 파일을 받을 수 있습니다. 커뮤니티 디렉터리 공개는 대기 중입니다. 최소 Obsidian 버전은 **1.13.0**입니다. 초보자 팁은 Windows의 실제 Obsidian 1.14.4에서 한국어·영어, 밝은·어두운 테마, 390 px 에뮬레이션 화면으로 검증했습니다. 실제 모바일 기기와 최소 지원 버전 검증은 남아 있습니다.
+Obsidian 커뮤니티 플러그인에서 **Advanced New Tab**을 검색해 설치할 수 있으며, [GitHub Releases](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases)에서도 설치 파일을 제공합니다. 최소 Obsidian 버전은 **1.13.0**입니다. 초보자 팁은 Windows의 실제 Obsidian 1.14.4에서 한국어·영어, 밝은·어두운 테마, 390 px 에뮬레이션 화면으로 검증했습니다. 실제 모바일 기기와 최소 지원 버전 검증은 남아 있습니다.
 
 홈 화면·설정·메뉴·안내 메시지는 앱 언어를 따르며 영어·한국어를 직접 선택할 수도 있습니다. 설정은 Obsidian 1.13의 검색 가능한 선언형 API를 사용합니다.
 
@@ -84,7 +84,7 @@ show recent files
 
 ## 설치와 개발
 
-[최신 GitHub 릴리스](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases/latest)의 `main.js`, `manifest.json`, `styles.css`를 `.obsidian/plugins/advanced-new-tab/`에 복사하여 활성화합니다. 커뮤니티 디렉터리에서의 설치는 공개 후 제공됩니다.
+Obsidian의 설정 → 커뮤니티 플러그인 → 탐색에서 **Advanced New Tab**을 검색해 설치하고 활성화하세요. 수동 설치는 [최신 GitHub 릴리스](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases/latest)의 `main.js`, `manifest.json`, `styles.css`를 `.obsidian/plugins/advanced-new-tab/`에 복사합니다.
 
 개발자는 `.nvmrc`의 Node 버전으로 `npm ci`, `npm run lint`, `npm test`, `npm run build`를 실행합니다. PowerShell 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`를 사용합니다. 개발 빌드는 인접 `developmentVault`에 출력합니다.
 
