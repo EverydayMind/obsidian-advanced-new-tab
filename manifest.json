@@ -1,7 +1,7 @@
 {
 	"id": "advanced-new-tab",
 	"name": "Advanced New Tab",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.13.0",
 	"description": "Turn empty tabs into a start page with fuzzy file search, bookmarks, recent files, and one-click notes from templates.",
 	"author": "everydaymind",

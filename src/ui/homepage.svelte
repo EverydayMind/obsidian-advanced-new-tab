@@ -1,6 +1,7 @@
 <script lang="ts">
     import { getCorePlugin } from "../integrations"
     import { getEnabledCoreActions } from "../coreActions"
+    import { pickBeginnerTip } from "../beginnerTips"
     import { onMount } from 'svelte'
     import Icon from "./svelteComponents/icon.svelte"
     import { parseWebUrl } from "../utils/urlUtils"
@@ -28,6 +29,17 @@
     let recentFileList: recentFile[] = []
     let templatesList: TFile[] = []
     let currentTemplateStatus = ''
+
+    // Select on view creation, so store updates and language changes keep this tip.
+    const beginnerTip = embeddedView ? undefined : pickBeginnerTip()
+    const modifier = Platform.isMacOS ? '⌘' : 'Ctrl'
+    const tipHotkeys = {
+        modifier,
+        paletteHotkey: Platform.isMacOS ? '⌘P' : 'Ctrl+P',
+        switcherHotkey: Platform.isMacOS ? '⌘O' : 'Ctrl+O',
+        searchHotkey: Platform.isMacOS ? '⌘⇧F' : 'Ctrl+Shift+F',
+        readingHotkey: Platform.isMacOS ? '⌘E' : 'Ctrl+E'
+    }
 
     $: pluginSettings = $pluginSettingsStore
     $: bookmarkedFileList = pluginSettings?.showbookmarkedFiles ? $bookmarkedFiles ?? [] : []
@@ -209,12 +221,18 @@
         {/if}
     {/each}
 
-    {#if !embeddedView && pluginSettings.showGuide}
-        <div class="advanced-new-tab-guide-container">
+    {#if !embeddedView && pluginSettings.showGuide && beginnerTip}
+        <section class="advanced-new-tab-guide-container" aria-label={$i18n('guide.title')}>
             <div class="advanced-new-tab-guide-box">
-                {$i18n('guide.palette', { hotkey: Platform.isMacOS ? '⌘P' : 'Ctrl+P' })}
+                <div class="advanced-new-tab-guide-heading">
+                    <Icon name="lightbulb" size={16}/>
+                    <span>{$i18n('guide.title')}</span>
+                </div>
+                <h2 class="advanced-new-tab-guide-tip-title">{$i18n(beginnerTip.title)}</h2>
+                <p class="advanced-new-tab-guide-tip-text">{$i18n(beginnerTip.body, tipHotkeys)}</p>
+                <a href={beginnerTip.helpUrl} target="_blank" rel="noopener noreferrer">{$i18n('guide.more')}</a>
             </div>
-        </div>
+        </section>
     {/if}
 </main>
   
@@ -262,6 +280,7 @@
     }
     .advanced-new-tab-guide-box{
         width: 100%;
+        box-sizing: border-box;
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         border-radius: var(--radius-m);
@@ -269,7 +288,26 @@
         color: var(--text-muted);
         font-size: var(--font-ui-small);
         line-height: 1.6;
-        text-align: center;
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+    .advanced-new-tab-guide-heading{
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+    .advanced-new-tab-guide-tip-title{
+        margin: 0;
+        color: var(--text-normal);
+        font-size: var(--font-ui-medium);
+        font-weight: 600;
+    }
+    .advanced-new-tab-guide-tip-text{
+        margin: 8px 0;
+    }
+    .advanced-new-tab-guide-box a{
+        display: inline-block;
     }
 
     @media(max-width: 600px){

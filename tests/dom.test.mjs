@@ -21,13 +21,15 @@ const bundle = await build({
         import { DEFAULT_SETTINGS } from './src/settingsData';
         import { pluginSettingsStore, templateStatus, recentFiles } from './src/store';
         import { initI18n } from './src/i18n';
+        import { createTranslator } from './src/i18n/translator';
+        import { BEGINNER_TIPS } from './src/beginnerTips';
         import { highlightText } from './src/utils/highlightUtils';
         import { Suggester } from './src/suggester/suggester';
         import { executeCoreAction } from './src/coreActions';
         import { RecentFileManager } from './src/recentFiles';
         import { bookmarkedFilesManager } from './src/bookmarkedFiles';
-        import { TFile } from 'obsidian';
-        export { mount, unmount, flushSync, writable, get, Homepage, HighlightedText, SuggesterView, LocalSuggestion, DEFAULT_SETTINGS, pluginSettingsStore, templateStatus, recentFiles, initI18n, highlightText, Suggester, executeCoreAction, RecentFileManager, bookmarkedFilesManager, TFile };
+        import { TFile, Platform } from 'obsidian';
+        export { mount, unmount, flushSync, writable, get, Homepage, HighlightedText, SuggesterView, LocalSuggestion, DEFAULT_SETTINGS, pluginSettingsStore, templateStatus, recentFiles, initI18n, createTranslator, BEGINNER_TIPS, highlightText, Suggester, executeCoreAction, RecentFileManager, bookmarkedFilesManager, TFile, Platform };
     `, resolveDir: process.cwd(), loader: 'ts' },
     bundle: true, write: false, outfile: 'dom-test.js', format: 'cjs', platform: 'browser', logLevel: 'silent',
     alias: { obsidian: resolve('tests/fixtures/obsidian-ui.mjs') },
@@ -56,6 +58,78 @@ test('Svelte mounts real input bindings and reacts to translated settings and qu
     assert.match(target.querySelector('input').placeholder, /Search files/);
     assert.ok(!target.textContent.includes('Capture'));
     await ui.unmount(component); assert.equal(target.children.length, 0); target.remove();
+});
+
+test('new tabs show distinct tips that survive translation, settings, and visibility changes', async t => {
+    t.mock.method(Math, 'random', () => 0);
+    const targets = []; const components = [];
+    const settings = structuredClone(ui.DEFAULT_SETTINGS);
+    settings.showGuide = true; settings.showQuickActions = false;
+    const plugin = { settings, app: { vault: { adapter: {} } } };
+    function open(embeddedView) {
+        const target = document.createElement('div'); document.body.appendChild(target); targets.push(target);
+        const searchBar = { searchBarEl: ui.writable(), activeExtEl: ui.writable(), suggestionContainerEl: ui.writable(), updateActiveSuggester() {} };
+        components.push(ui.flushSync(() => ui.mount(ui.Homepage, { target, props: { plugin, HomeTabSearchBar: searchBar, embeddedView } })));
+        return target;
+    }
+    try {
+        ui.pluginSettingsStore.set(settings); ui.initI18n('en');
+        const first = open();
+        const guide = first.querySelector('.advanced-new-tab-guide-container');
+        assert.equal(guide, first.querySelector('main').lastElementChild);
+        const firstTitle = guide.querySelector('h2').textContent;
+        const tip = ui.BEGINNER_TIPS.find(item => ui.createTranslator('en')(item.title) === firstTitle);
+        assert.ok(tip);
+        assert.equal(guide.querySelector('a').href, tip.helpUrl);
+        assert.equal(guide.querySelector('a').getAttribute('rel'), 'noopener noreferrer');
+
+        settings.wordmark = 'Updated title'; ui.pluginSettingsStore.set(settings); ui.initI18n('ko'); ui.flushSync();
+        assert.equal(guide.querySelector('h2').textContent, ui.createTranslator('ko')(tip.title));
+        assert.equal(guide.querySelector('a').href, tip.helpUrl);
+        settings.showGuide = false; ui.pluginSettingsStore.set(settings); ui.flushSync();
+        assert.equal(first.querySelector('.advanced-new-tab-guide-container'), null);
+        settings.showGuide = true; ui.pluginSettingsStore.set(settings); ui.initI18n('en'); ui.flushSync();
+        assert.equal(first.querySelector('.advanced-new-tab-guide-tip-title').textContent, firstTitle);
+
+        const second = open();
+        assert.notEqual(second.querySelector('.advanced-new-tab-guide-tip-title').textContent, firstTitle);
+        const embedded = open({ searchbarOnly: true });
+        assert.equal(embedded.querySelector('.advanced-new-tab-guide-container'), null);
+    } finally {
+        for (const component of components) await ui.unmount(component);
+        targets.forEach(target => target.remove());
+    }
+});
+
+test('tip shortcuts follow the platform and template syntax remains literal', async t => {
+    // Select palette, then slash (because palette is excluded), then palette again.
+    t.mock.method(Math, 'random', () => 0);
+    const settings = structuredClone(ui.DEFAULT_SETTINGS); settings.showGuide = true; settings.showQuickActions = false;
+    const plugin = { settings, app: { vault: { adapter: {} } } };
+    const targets = []; const components = [];
+    function open() {
+        const target = document.createElement('div'); document.body.appendChild(target); targets.push(target);
+        const searchBar = { searchBarEl: ui.writable(), activeExtEl: ui.writable(), suggestionContainerEl: ui.writable(), updateActiveSuggester() {} };
+        components.push(ui.flushSync(() => ui.mount(ui.Homepage, { target, props: { plugin, HomeTabSearchBar: searchBar } })));
+        return target;
+    }
+    try {
+        ui.pluginSettingsStore.set(settings); ui.initI18n('en');
+        ui.Platform.isMacOS = false;
+        const windows = [open(), open()].find(target => target.querySelector('h2').textContent === 'Command palette');
+        assert.match(windows.querySelector('.advanced-new-tab-guide-tip-text').textContent, /Ctrl\+P/);
+        ui.Platform.isMacOS = true;
+        const mac = [open(), open()].find(target => target.querySelector('h2').textContent === 'Command palette');
+        assert.match(mac.querySelector('.advanced-new-tab-guide-tip-text').textContent, /⌘P/);
+        const template = ui.BEGINNER_TIPS.find(tip => tip.id === 'templateVariables');
+        for (const locale of ['en', 'ko']) {
+            assert.match(ui.createTranslator(locale)(template.body, { modifier: 'Ctrl' }), /\{\{title\}\}.*\{\{date\}\}.*\{\{time\}\}/);
+        }
+    } finally {
+        ui.Platform.isMacOS = false;
+        for (const component of components) await ui.unmount(component);
+        targets.forEach(target => target.remove());
+    }
 });
 
 test('real Svelte highlighting renders hostile markup as text with safe highlight spans', async () => {

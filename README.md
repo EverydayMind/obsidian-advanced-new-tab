@@ -2,6 +2,8 @@
 
 A start page for empty Obsidian tabs, with fuzzy file search, bookmarks, recent files, and notes created from templates.
 
+**Advanced New Tab is designed to help Obsidian beginners use the app with ease.** It brings common actions together and introduces basic features and core plugins through short hints and tips.
+
 ![Advanced New Tab](images/home-tab.png)
 
 **This project was created by forking [olrenso/obsidian-home-tab](https://github.com/olrenso/obsidian-home-tab).** It continues under the MIT License with the original copyright preserved.
@@ -10,7 +12,7 @@ A start page for empty Obsidian tabs, with fuzzy file search, bookmarks, recent 
 
 ## Status and compatibility
 
-Version 1.0.0 is under development and has not yet been submitted to the community directory. Requires Obsidian **1.13.0 or later**. Desktop and mobile compatibility still need manual verification before release.
+Installable assets are available in [GitHub Releases](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases). Community directory publication is pending. Requires Obsidian **1.13.0 or later**. The beginner tips were verified in the Windows Obsidian 1.14.4 runtime, in English and Korean, light and dark themes, and a 390 px emulated viewport. Testing on physical mobile devices and the minimum supported version remains pending.
 
 The home page, settings, menus, and notices follow the Obsidian language, with English and Korean overrides. Settings use the searchable declarative API introduced in Obsidian 1.13.
 
@@ -23,9 +25,10 @@ The home page, settings, menus, and notices follow the Obsidian language, with E
 - Bookmarks, recent files, and templates in separate sections.
 - Quick actions to create a blank note or open today's daily note.
 - New base, New canvas, and Open web viewer buttons appear when their respective core plugins are enabled.
+- A random beginner tip at the bottom of each new tab, covering Obsidian basics and core plugins.
 - HTTP(S) links and domain names offer an Open link action in local search.
 - Customize logo, title, font, search result count, and delay.
-- Toggle bookmarks, recent files, templates, quick actions, guide text, and ribbon visibility.
+- Toggle bookmarks, recent files, templates, quick actions, beginner tips, and ribbon visibility.
 - Optional Omnisearch and Surfing integrations remain supported.
 - Embed search inside a Markdown note.
 
@@ -63,6 +66,16 @@ Bookmark group can limit the section to one group and its descendants. Re-select
 
 Recent files can use last-opened time or file modification time, display relative time and full parent folders, and exclude folders (one per line, including subfolders). Clear list removes list entries without deleting files. Hidden modification entries stay hidden for the session until modified again; modification history is rebuilt on restart. Last-opened history is saved only when Store recent files is enabled.
 
+## Beginner hints & tips
+
+Each standalone new tab displays one of **36 tips** at random below the file sections. Topics include the command palette, slash commands, Markdown, links, search, bookmarks, Daily notes, Templates, Canvas, and Bases. Consecutive new tabs avoid repeating the same tip during a session. The selected tip stays fixed while that tab is open, including when settings or the display language change.
+
+Tips follow the plugin's English/Korean display language and use platform-appropriate default keyboard shortcuts. Each tip links to official Obsidian Help. Enable relevant core plugins in Settings → Core plugins; check Settings → Hotkeys if you have customized shortcuts. Core Search examples refer to Obsidian's Search sidebar.
+
+Use **Show beginner hints & tips** to hide or show this area. It uses the existing guide visibility preference. Embedded search blocks do not display tips. Read the full [English tip list](BEGINNER_TIPS.md) or [한국어 힌트 & 팁 목록](BEGINNER_TIPS.ko.md).
+
+![Beginner hints and tips in Obsidian](images/beginner-tips.png)
+
 ## Templates
 
 Enable Show templates and configure the core Templates plugin, or set Template folder override. Markdown files in the folder and subfolders are listed. Clicking creates a note; Ctrl/Cmd+click opens it in a new tab.
@@ -96,7 +109,7 @@ The view type is `advanced-new-tab-view`, the block identifier is `advanced-new-
 
 ## Installation and development
 
-A community listing and downloadable release are not available yet. After release, copy main.js, manifest.json, and styles.css into `.obsidian/plugins/advanced-new-tab/` and enable the plugin.
+Download main.js, manifest.json, and styles.css from [the latest GitHub release](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases/latest), copy them into `.obsidian/plugins/advanced-new-tab/`, and enable the plugin. Community-directory installation is pending publication.
 
 Use the Node version in .nvmrc:
 
@@ -111,7 +124,7 @@ On Windows PowerShell, use npm.cmd if npm.ps1 is blocked by the execution policy
 
 Use `npm version <x.y.z> --no-git-tag-version` to prepare compatibility metadata. Create the first release tag only after release QA.
 
-`npm run release:check` verifies metadata and blocks tracked internal documents, local data, and generated release assets. CI runs clean installation, release checks, lint, tests, and build on Windows and Linux. Pushing a matching semver tag runs the same checks, attests the three installable assets, and creates a draft release. Review and publish that draft after real-app QA and community preview scan. No tag or remote release has been created yet.
+`npm run release:check` verifies metadata and blocks tracked internal documents, local data, and generated release assets. CI runs clean installation, release checks, lint, tests, and build on Windows and Linux. Pushing a matching semver tag runs the same checks, attests the three installable assets, and creates a draft release. Review that draft after real-app QA before publication, then resolve any community-directory scan feedback.
 
 The UI uses Svelte 5 with its legacy template syntax and the public mount/unmount API. Client DOM tests cover store bindings, translation changes, quick-action clicks, safe text highlighting, and touch selection. Official Obsidian lint rules run on TypeScript sources; Svelte lint and type checks run separately. Directory preview scan and real-app testing remain required before release.
 
@@ -124,6 +137,8 @@ There is no telemetry or built-in remote search service. Vault search and note c
 When daily capture is enabled, Alt+Enter explicitly adds your search input to today's daily note. No background note-content edits are performed.
 
 A configured logo image URL causes an image request when the page is rendered. Opening a URL or using Surfing accesses the chosen website/search provider. Omnisearch and Surfing are separate plugins with their own behavior and privacy policies.
+
+Beginner tips are bundled locally. A help link visits the official Obsidian website only when you open it.
 
 ## Contributing and translations
 

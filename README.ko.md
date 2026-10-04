@@ -2,6 +2,8 @@
 
 빈 탭에서 파일 검색, 북마크·최근 파일 열기, 템플릿으로 새 노트 생성을 제공합니다.
 
+**Advanced New Tab의 목적은 Obsidian 초보자가 앱을 쉽게 이용하도록 돕는 것입니다.** 자주 쓰는 작업을 한곳에 모으고 짧은 힌트와 팁으로 기본 기능과 코어 플러그인을 익히도록 안내합니다.
+
 ![Advanced New Tab](images/home-tab.png)
 
 **이 프로젝트는 [olrenso/obsidian-home-tab](https://github.com/olrenso/obsidian-home-tab)을 fork하여 작성했습니다.** 원저작자의 저작권 고지를 유지하며 MIT 라이선스로 배포합니다.
@@ -10,7 +12,7 @@
 
 ## 현재 상태
 
-1.0.0 개발 중이며 커뮤니티 디렉터리 등록과 정식 릴리스는 아직 이루어지지 않았습니다. 최소 Obsidian 버전은 **1.13.0**입니다. 데스크톱·모바일 실제 앱 검증이 남아 있습니다.
+[GitHub Releases](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases)에서 설치 파일을 받을 수 있습니다. 커뮤니티 디렉터리 공개는 대기 중입니다. 최소 Obsidian 버전은 **1.13.0**입니다. 초보자 팁은 Windows의 실제 Obsidian 1.14.4에서 한국어·영어, 밝은·어두운 테마, 390 px 에뮬레이션 화면으로 검증했습니다. 실제 모바일 기기와 최소 지원 버전 검증은 남아 있습니다.
 
 홈 화면·설정·메뉴·안내 메시지는 앱 언어를 따르며 영어·한국어를 직접 선택할 수도 있습니다. 설정은 Obsidian 1.13의 검색 가능한 선언형 API를 사용합니다.
 
@@ -20,7 +22,7 @@
 - 파일 이름과 별칭을 검색합니다. `md`, `image`, `pdf`, `canvas`, `base` 등의 필터 키를 입력하고 Tab을 누릅니다. 빈 입력에서 Backspace로 해제합니다.
 - 방향키로 선택, Enter로 열기, Ctrl/Cmd+Enter로 새 탭에 열기, Shift+Enter로 새 노트를 생성합니다. 기본 전역 단축키는 지정하지 않습니다.
 - HTTP(S) URL 또는 도메인을 입력하면 **Web viewer 코어 플러그인**으로 엽니다. 일반 선택은 현재 탭, Ctrl/Cmd 선택은 새 탭을 사용합니다. 데스크톱에서 Web viewer를 켜야 하며, 사용할 수 없으면 안내를 표시합니다. 기본·Omnisearch·Surfing 검색 모드 모두 같은 경로를 사용합니다.
-- 북마크·최근 파일·템플릿·빠른 작업·안내문·리본 아이콘을 각각 표시하거나 숨길 수 있습니다.
+- 북마크·최근 파일·템플릿·빠른 작업·초보자 팁·리본 아이콘을 각각 표시하거나 숨길 수 있습니다.
 - Omnisearch와 Surfing 선택 연동을 유지합니다.
 - 헤딩 검색을 켜면 로컬 검색 결과에서 선택한 헤딩으로 이동합니다. Omnisearch 결과에는 영향을 주지 않습니다.
 - `template` 또는 `tpl` 입력 후 Tab을 누르면 설정된 템플릿만 검색합니다. Enter로 새 노트를 만들며 Ctrl/Cmd+Enter는 새 탭에 엽니다. 템플릿 필터에서는 Shift+Enter로 빈 노트를 만들지 않습니다.
@@ -38,6 +40,16 @@
 북마크 그룹을 선택하면 해당 그룹과 하위 그룹만 표시합니다. 그룹 이름을 바꾸면 다시 선택하세요. 호버 미리보기는 북마크·최근 파일 카드에서 페이지 미리보기 코어 플러그인과 해당 보조 키 설정을 사용합니다.
 
 최근 파일은 열람·수정 기준 선택, 상대 시간·전체 상위 폴더 표시, 제외 폴더(줄마다 하나, 하위 폴더 포함)를 지원합니다. 목록 지우기는 실제 파일을 삭제하지 않습니다. 수정 기준에서 숨긴 항목은 해당 세션에서 다시 수정할 때까지 숨기며, 앱 재시작 시 수정 이력을 다시 계산합니다. 열람 이력은 저장 옵션을 켠 경우에만 보존합니다.
+
+## 초보자 힌트 & 팁
+
+새 시작 탭을 열 때마다 파일 섹션 아래에 **36개 팁 중 하나**를 무작위로 표시합니다. 명령어 팔레트, 슬래시 명령, 마크다운, 링크, 검색, 북마크, 일일 노트, 템플릿, 캔버스, 베이스 등 기본 기능과 코어 플러그인을 중심으로 구성했습니다. 같은 세션에서 연속으로 여는 탭은 같은 팁을 반복하지 않습니다. 열린 탭의 팁은 설정이나 표시 언어를 바꾸어도 유지됩니다.
+
+팁은 플러그인의 한국어·영어 표시 언어를 따르며 운영체제에 맞는 기본 단축키와 공식 도움말 링크를 제공합니다. 필요한 기능은 설정 → 코어 플러그인에서 켜세요. 단축키를 변경했다면 설정 → 단축키에서 확인하세요. 코어 검색 예시는 Obsidian의 검색 사이드바에서 사용합니다.
+
+설정의 **초보자 힌트 & 팁 표시**로 숨기거나 표시할 수 있으며 기존 안내문 표시 설정을 이어서 사용합니다. 노트 안에 삽입한 검색 블록에는 팁이 표시되지 않습니다. 전체 [한국어 힌트 & 팁 목록](BEGINNER_TIPS.ko.md)과 [English tip list](BEGINNER_TIPS.md)를 참고하세요.
+
+![Obsidian 초보자 힌트와 팁](images/beginner-tips.ko.png)
 
 ## 템플릿
 
@@ -72,7 +84,7 @@ show recent files
 
 ## 설치와 개발
 
-현재 커뮤니티 설치 링크·정식 릴리스는 없습니다. 릴리스 공개 후 `main.js`, `manifest.json`, `styles.css`를 `.obsidian/plugins/advanced-new-tab/`에 복사하여 활성화합니다.
+[최신 GitHub 릴리스](https://github.com/EverydayMind/obsidian-advanced-new-tab/releases/latest)의 `main.js`, `manifest.json`, `styles.css`를 `.obsidian/plugins/advanced-new-tab/`에 복사하여 활성화합니다. 커뮤니티 디렉터리에서의 설치는 공개 후 제공됩니다.
 
 개발자는 `.nvmrc`의 Node 버전으로 `npm ci`, `npm run lint`, `npm test`, `npm run build`를 실행합니다. PowerShell 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`를 사용합니다. 개발 빌드는 인접 `developmentVault`에 출력합니다.
 
@@ -80,7 +92,7 @@ UI는 Svelte 5의 기존 템플릿 문법과 공개 mount/unmount API를 사용�
 
 코어 플러그인 조회·명령 실행·Omnisearch 조회·Web viewer 뷰 식별자는 공개 SDK 계약이 없어 가용성을 확인하는 호환 계층에 모았습니다. Web viewer 경로는 설치된 Obsidian 1.14.4 코드와 모의 탐색 테스트로 확인했으며 최소 지원 버전의 실제 앱 검증이 남아 있습니다.
 
-`npm run release:check`는 메타데이터 정합성과 추적 금지 파일을 검사합니다. CI는 Windows·Linux에서 clean install·릴리스 검사·린트·테스트·빌드를 실행합니다. manifest와 같은 semver 태그를 push하면 같은 검증 후 설치용 파일 3개에 빌드 attestation을 생성하고 초안 릴리스를 만듭니다. 실제 앱 QA·커뮤니티 preview scan 후 초안을 검토하여 공개합니다. 아직 태그·원격 릴리스는 생성하지 않았습니다.
+`npm run release:check`는 메타데이터 정합성과 추적 금지 파일을 검사합니다. CI는 Windows·Linux에서 clean install·릴리스 검사·린트·테스트·빌드를 실행합니다. manifest와 같은 semver 태그를 push하면 같은 검증 후 설치용 파일 3개에 빌드 attestation을 생성하고 초안 릴리스를 만듭니다. 실제 앱 QA 후 초안을 검토하여 공개하고 커뮤니티 디렉터리의 심사 피드백을 반영합니다.
 
 ## 개인정보
 
@@ -89,6 +101,8 @@ UI는 Svelte 5의 기존 템플릿 문법과 공개 mount/unmount API를 사용�
 빠른 기록을 켜고 Alt+Enter를 직접 실행하면 검색창 내용을 오늘 일일노트에 추가합니다. 백그라운드에서 노트 내용을 수정하지 않습니다.
 
 로고 이미지 URL을 지정하면 이미지 요청이 발생합니다. URL 열기·Surfing 검색은 선택한 웹사이트·검색 제공자에 접속합니다. Omnisearch·Surfing의 개인정보 처리는 해당 플러그인의 안내를 따릅니다.
+
+초보자 팁은 로컬에 포함됩니다. 도움말 링크를 클릭할 때만 공식 Obsidian 웹사이트에 접속합니다.
 
 ## 기여와 보안
 
