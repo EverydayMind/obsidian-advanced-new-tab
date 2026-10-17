@@ -74,6 +74,8 @@ Tips follow the plugin's English/Korean display language and use platform-approp
 
 Use **Show beginner hints & tips** to hide or show this area. It uses the existing guide visibility preference. Embedded search blocks do not display tips. Read the full [English tip list](BEGINNER_TIPS.md) or [한국어 힌트 & 팁 목록](BEGINNER_TIPS.ko.md).
 
+The tip card and command palette also provide buttons to open **4 hands-on starter guide notes** in `Obsidian Guide/` (1. Basics & Markdown, 2. Wikilinks & Backlinks, 3. Properties, tags & Search, 4. Core plugins) or restore missing guide notes. Guides are seeded once non-destructively when enabled; deleted or edited guide notes are never recreated or overwritten on startup.
+
 ![Beginner hints and tips in Obsidian](images/beginner-tips.png)
 
 ## Templates

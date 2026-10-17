@@ -1,4 +1,4 @@
-import { Notice, Plugin, WorkspaceLeaf, TFolder } from 'obsidian';
+import { Keymap, Notice, Plugin, WorkspaceLeaf, TFolder } from 'obsidian';
 import { EmbeddedHomeTab, HomeTabView, VIEW_TYPE, CODE_BLOCK_TYPE } from 'src/homeView';
 import { HomeTabSettingTab, DEFAULT_SETTINGS, type HomeTabSettings } from './settings'
 import { pluginSettingsStore, bookmarkedFiles, templateFiles, templateStatus } from './store'
@@ -14,12 +14,14 @@ import { openInWebViewer } from './webViewer'
 import { executeCoreAction, type CoreActionId } from './coreActions'
 import { HOVER_SOURCE } from './hoverPreview'
 import { DailyCapture } from './dailyCapture'
+import { OnboardingGuideManager, type OnboardingStep } from './onboardingGuides'
 
 export default class HomeTab extends Plugin {
 	settings: HomeTabSettings;
 	recentFileManager: RecentFileManager
 	bookmarkedFileManager?: bookmarkedFilesManager
 	templateManager: TemplateManager
+	onboardingGuides: OnboardingGuideManager
 	settingTab: HomeTabSettingTab
 	private embeddedCleanups = new Set<() => void>()
 	private ribbonEl: HTMLElement
@@ -30,6 +32,7 @@ export default class HomeTab extends Plugin {
 		await this.loadSettings();
 		initI18n(this.settings.language)
 		this.dailyCapture = new DailyCapture(this.app, this)
+		this.onboardingGuides = new OnboardingGuideManager(this.app, this)
 		this.registerHoverLinkSource(HOVER_SOURCE, { display: this.manifest.name, defaultMod: true })
 		this.settingTab = new HomeTabSettingTab(this.app, this)
 		this.addSettingTab(this.settingTab)
@@ -70,10 +73,21 @@ export default class HomeTab extends Plugin {
             id: 'open-today-daily-note',
 			name: t('action.dailyNote'),
 			callback: () => this.openTodayDailyNote()})
+		this.addCommand({
+			id: 'open-onboarding-guide',
+			name: t('command.openGuide'),
+			callback: () => { void this.openOnboardingGuide(1) }})
+		this.addCommand({
+			id: 'restore-onboarding-guides',
+			name: t('command.restoreGuides'),
+			callback: () => { void this.restoreOnboardingGuides() }})
 
 		// Wait for all plugins to load before check if the bookmarked plugin is enabled
 		this.app.workspace.onLayoutReady(() => {
             this.layoutReady = true
+            void this.onboardingGuides.seedIfNeeded().catch(error => {
+                console.error('[advanced-new-tab] Onboarding guide seeding failed', error)
+            })
             if (!getCommunityPlugin(this.app, 'home-tab') && !getCommunityPlugin(this.app, 'harbor-tab')) {
                 for (const leaf of this.app.workspace.getLeavesOfType('home-tab-view')) {
                     void leaf.setViewState({ ...leaf.getViewState(), type: VIEW_TYPE })
@@ -256,6 +270,30 @@ export default class HomeTab extends Plugin {
         } catch (error) {
             console.error('[advanced-new-tab] Web viewer failed', error)
             new Notice(t('notice.webViewerFailed'))
+        }
+    }
+
+    async openOnboardingGuide(step: OnboardingStep = 1, event?: MouseEvent | KeyboardEvent): Promise<void> {
+        try {
+            const newTab = event ? Boolean(Keymap.isModEvent(event)) : false
+            await this.onboardingGuides.openGuide(step, newTab)
+        } catch (error) {
+            console.error('[advanced-new-tab] Open onboarding guide failed', error)
+            new Notice(t('notice.guideFailed'))
+        }
+    }
+
+    async restoreOnboardingGuides(): Promise<void> {
+        try {
+            const result = await this.onboardingGuides.restoreMissingGuides()
+            new Notice(
+                result.status === 'restored'
+                    ? t('notice.guidesRestored', { count: result.restoredPaths.length })
+                    : t('notice.guidesComplete')
+            )
+        } catch (error) {
+            console.error('[advanced-new-tab] Restore onboarding guides failed', error)
+            new Notice(t('notice.guideFailed'))
         }
     }
 }

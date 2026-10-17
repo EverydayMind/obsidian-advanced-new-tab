@@ -231,6 +231,29 @@
                 <h2 class="advanced-new-tab-guide-tip-title">{$i18n(beginnerTip.title)}</h2>
                 <p class="advanced-new-tab-guide-tip-text">{$i18n(beginnerTip.body, tipHotkeys)}</p>
                 <a href={beginnerTip.helpUrl} target="_blank" rel="noopener noreferrer">{$i18n('guide.more')}</a>
+                <div class="advanced-new-tab-guide-starter">
+                    <div class="advanced-new-tab-guide-starter-header">
+                        <span class="advanced-new-tab-guide-starter-title">{$i18n('guide.starterTitle')}</span>
+                        <span class="advanced-new-tab-guide-starter-desc">{$i18n('guide.starterDesc')}</span>
+                    </div>
+                    <div class="advanced-new-tab-guide-actions">
+                        <button type="button" class="advanced-new-tab-guide-button is-primary" on:click={event => void plugin.openOnboardingGuide?.(1, event)}>
+                            {$i18n('guide.openStarter')}
+                        </button>
+                        <button type="button" class="advanced-new-tab-guide-button" on:click={event => void plugin.openOnboardingGuide?.(2, event)}>
+                            {$i18n('guide.step2')}
+                        </button>
+                        <button type="button" class="advanced-new-tab-guide-button" on:click={event => void plugin.openOnboardingGuide?.(3, event)}>
+                            {$i18n('guide.step3')}
+                        </button>
+                        <button type="button" class="advanced-new-tab-guide-button" on:click={event => void plugin.openOnboardingGuide?.(4, event)}>
+                            {$i18n('guide.step4')}
+                        </button>
+                        <button type="button" class="advanced-new-tab-guide-button is-restore" on:click={() => void plugin.restoreOnboardingGuides?.()}>
+                            {$i18n('guide.restoreStarter')}
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
     {/if}
@@ -308,6 +331,52 @@
     }
     .advanced-new-tab-guide-box a{
         display: inline-block;
+    }
+    .advanced-new-tab-guide-starter{
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--background-modifier-border);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .advanced-new-tab-guide-starter-header{
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .advanced-new-tab-guide-starter-title{
+        color: var(--text-normal);
+        font-size: var(--font-ui-small);
+        font-weight: 600;
+    }
+    .advanced-new-tab-guide-starter-desc{
+        color: var(--text-muted);
+        font-size: var(--font-ui-smaller);
+    }
+    .advanced-new-tab-guide-actions{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .advanced-new-tab-guide-button{
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-primary);
+        border-radius: var(--radius-s);
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: var(--font-ui-small);
+        color: var(--text-normal);
+    }
+    .advanced-new-tab-guide-button.is-primary{
+        border-color: var(--interactive-accent);
+        font-weight: 500;
+    }
+    .advanced-new-tab-guide-button.is-restore{
+        color: var(--text-muted);
+    }
+    .advanced-new-tab-guide-button:hover{
+        background: var(--background-modifier-hover);
     }
 
     @media(max-width: 600px){

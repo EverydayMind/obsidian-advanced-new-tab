@@ -76,6 +76,7 @@ export interface HomeTabSettings extends ObjectKeys{
     bookmarkGroup: string
     captureEnabled: boolean
     captureHeading: string
+    onboardingSeedState: '' | 'pending' | 'complete'
 }
 
 export const DEFAULT_SETTINGS: HomeTabSettings = {
@@ -130,4 +131,5 @@ export const DEFAULT_SETTINGS: HomeTabSettings = {
     bookmarkGroup: '',
     captureEnabled: false,
     captureHeading: '',
+    onboardingSeedState: '',
 }

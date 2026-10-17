@@ -93,6 +93,19 @@ test('new tabs show distinct tips that survive translation, settings, and visibi
 
         const second = open();
         assert.notEqual(second.querySelector('.advanced-new-tab-guide-tip-title').textContent, firstTitle);
+        const guideCalls = [];
+        plugin.openOnboardingGuide = (step, event) => guideCalls.push({ step, ctrlKey: !!event?.ctrlKey });
+        plugin.restoreOnboardingGuides = () => guideCalls.push({ restore: true });
+        const guideButtons = [...second.querySelectorAll('.advanced-new-tab-guide-button')];
+        assert.equal(guideButtons.length, 5);
+        guideButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+        guideButtons[3].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        guideButtons[4].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        assert.deepEqual(guideCalls, [
+            { step: 1, ctrlKey: true },
+            { step: 4, ctrlKey: false },
+            { restore: true },
+        ]);
         const embedded = open({ searchbarOnly: true });
         assert.equal(embedded.querySelector('.advanced-new-tab-guide-container'), null);
     } finally {

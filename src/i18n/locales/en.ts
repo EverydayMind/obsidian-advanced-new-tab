@@ -281,5 +281,17 @@ export const en = {
     "settings.captureHeading.desc": "Append under this heading, creating it if missing. Empty appends to the end of the note.",
     "notice.captured": "Saved to today's daily note.",
     "notice.captureFailed": "Unable to save. Check Daily notes, its folder, date format, and template. Your input was kept.",
+    "guide.starterTitle": "Hands-on starter guides",
+    "guide.starterDesc": "Open the 4-step Obsidian and core plugin practice notes in Obsidian Guide/.",
+    "guide.openStarter": "1. Basics & Markdown",
+    "guide.step2": "2. Wikilinks & Backlinks",
+    "guide.step3": "3. Properties, tags & Search",
+    "guide.step4": "4. Core plugins",
+    "guide.restoreStarter": "Restore missing guides",
+    "command.openGuide": "Open beginner starter guide",
+    "command.restoreGuides": "Restore missing beginner starter guides",
+    "notice.guidesRestored": "Restored {count} starter guide note(s) in Obsidian Guide/.",
+    "notice.guidesComplete": "All 4 starter guide notes already exist in Obsidian Guide/.",
+    "notice.guideFailed": "Unable to open or restore starter guide notes.",
 } as const
 export type MessageKey = keyof typeof en
