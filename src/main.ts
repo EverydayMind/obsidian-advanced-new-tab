@@ -37,7 +37,7 @@ export default class HomeTab extends Plugin {
 		this.settingTab = new HomeTabSettingTab(this.app, this)
 		this.addSettingTab(this.settingTab)
 		this.registerView(VIEW_TYPE, (leaf) => new HomeTabView(leaf, this));		
-		this.ribbonEl = this.addRibbonIcon('search', t('command.open'), () => this.activateView(false, true))
+		this.ribbonEl = this.addRibbonIcon('search', t('ribbon.open'), () => this.activateView(false, true))
 		this.ribbonEl.toggle(this.settings.showRibbonIcon)
 
 		// Replace new tabs with home tab view

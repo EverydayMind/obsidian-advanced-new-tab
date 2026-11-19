@@ -106,6 +106,7 @@ export const ko: Partial<Record<MessageKey, string>> = {
     'tips.readingView.title': "편집 보기와 읽기 보기 전환하기",
     'tips.readingView.body': "{readingHotkey}로 편집 보기와 읽기 보기를 전환하세요. 라이브 프리뷰는 편집 중 서식을 보여 주며, 소스 모드는 마크다운 문법을 그대로 보여 줍니다.",
     'command.open': '새 탭에서 열기',
+    'ribbon.open': 'Advanced New Tab 열기',
     'command.replace': '현재 탭 바꾸기',
     'notice.templateFailed': '템플릿으로 새 노트를 생성하지 못했습니다.',
     "settings.language": "언어",

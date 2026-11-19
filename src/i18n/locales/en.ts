@@ -104,6 +104,7 @@ export const en = {
     'tips.readingView.title': "Switch between writing and reading",
     'tips.readingView.body': "Press {readingHotkey} to switch between Editing and Reading view. Live Preview formats text while you edit; Source mode shows the Markdown syntax.",
     'command.open': 'Open in new tab',
+    'ribbon.open': 'Open Advanced New Tab',
     'command.replace': 'Replace current tab',
     'notice.templateFailed': 'Failed to create note from template.',
     "settings.language": "Language",

@@ -11,9 +11,11 @@ import { get } from 'svelte/store'
 import HomeTabFileSuggestion from 'src/ui/svelteComponents/homeTabFileSuggestion.svelte'
 import { parseWebUrl } from '../utils/urlUtils'
 import { t } from '../i18n'
+import { parseExtensionQuery } from '../utils/extensionQuery'
 
 export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseResult<SearchFile>>{
     private files: SearchFile[]
+    private indexed: SearchFile[] = []
     private fuzzySearch: FileFuzzySearch
 
     private plugin: HomeTab
@@ -21,6 +23,7 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
 
     private activeFilter: FileType | FileExtension  | null
     private templateMode = false
+    private lastExtensionOnly = false
 
     constructor(app: App, plugin: HomeTab, searchBar: HomeTabSearchBar) {
         super(app, get(searchBar.searchBarEl), get(searchBar.suggestionContainerEl), {
@@ -86,13 +89,14 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
             : getSearchFiles(this.app, this.plugin.settings.unresolvedLinks, this.plugin.settings.searchHeadings)
         let indexed = this.plugin.settings.markdownOnly ? this.filterSearchFileArray('markdown', this.files) : this.files
         if (this.activeFilter) indexed = this.filterSearchFileArray(this.activeFilter, this.files)
+        this.indexed = indexed
         const options = { ...DEFAULT_FUSE_OPTIONS, ignoreLocation: true, fieldNormWeight: 1.65, keys: [{name: 'basename', weight: 1.5}, {name: 'aliases', weight: 0.1}] }
         if (this.fuzzySearch) this.fuzzySearch.updateSearchArray(indexed)
         else this.fuzzySearch = new FileFuzzySearch(indexed, options)
     }
 
     onNoSuggestion(): void {
-        if (this.templateMode) { this.close(); return }
+        if (this.templateMode || this.lastExtensionOnly) { this.close(); return }
         if(!this.activeFilter || this.activeFilter === 'markdown' || this.activeFilter === 'md'){
             const input = this.inputEl.value
             if (input) {
@@ -121,9 +125,25 @@ export default class HomeTabFileSuggester extends TextInputSuggester<Fuse.FuseRe
 
     getSuggestions(input: string): Fuse.FuseResult<SearchFile>[] {
         if (this.templateMode) this.refreshIndex()
-        const results: Fuse.FuseResult<SearchFile>[] = this.templateMode && !input.trim()
+        const extQuery = this.templateMode ? { kind: 'none' as const } : parseExtensionQuery(input,
+            new Set((this.indexed ?? []).filter(f => f.file && f.extension).map(f => f.extension.toLowerCase())))
+        const extMatches = (ext: string) => (this.indexed ?? []).filter(f => f.file && !f.heading && f.extension.toLowerCase() === ext)
+            .sort((a, b) => (b.file?.stat?.mtime ?? 0) - (a.file?.stat?.mtime ?? 0))
+            .slice(0, this.plugin.settings.maxResults)
+            .map((item, refIndex) => ({ item, refIndex, score: 0 }))
+        let results: Fuse.FuseResult<SearchFile>[]
+        if (extQuery.kind === 'dot') results = extMatches(extQuery.ext)
+        else if (extQuery.kind === 'bare') {
+            const direct = extMatches(extQuery.ext)
+            const seen = new Set(direct.map(r => r.item.path))
+            const fuzzy = (this.fuzzySearch?.rawSearch(input, this.plugin.settings.maxResults) ?? []).filter(r => !seen.has(r.item.path))
+            results = [...direct, ...fuzzy].slice(0, this.plugin.settings.maxResults)
+        } else if (extQuery.kind === 'suffix') {
+            results = (this.fuzzySearch?.rawSearch(extQuery.text) ?? []).filter(r => r.item.extension.toLowerCase() === extQuery.ext)
+        } else results = this.templateMode && !input.trim()
             ? this.files.slice(0, this.plugin.settings.maxResults).map((item, refIndex) => ({ item, refIndex, score: 0 }))
             : this.fuzzySearch?.rawSearch(input, this.plugin.settings.maxResults) ?? []
+        this.lastExtensionOnly = extQuery.kind === 'dot'
         const url = parseWebUrl(input)
         if (url) results.unshift({ item: { name: url, basename: url, path: url,
             url, isCreated: true, extension: '', fileType: 'markdown' }, refIndex: -1, score: 0 })
